@@ -20,11 +20,11 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# 虚拟环境
 venv/
-env/
+.venv/
 ENV/
-.venv
+env/
 
 # IDE
 .vscode/
@@ -33,26 +33,33 @@ ENV/
 *.swo
 *~
 
-# OS
+# 操作系统
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
-
-# Environment variables
-.env
-.env.local
-
-# Database
-*.db
-*.sqlite3
+# Git
+.git/
+.gitignore
 
 # Docker
-data/
-ssl/
+Dockerfile
+docker-compose.yml
+.dockerignore
 
-# Temporary files
-*.tmp
+# 日志和数据
+logs/
+data/
+*.log
+
+# 测试
+test_e2e.py
+TESTING.md
+
+# 文档
+*.md
+!README.md
+
+# 临时文件
+tmp/
 temp/
+*.tmp

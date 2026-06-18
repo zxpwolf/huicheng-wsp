@@ -3,14 +3,16 @@
 """
 import pymysql
 import json
+import os
 from datetime import datetime, date
 
+# 从环境变量读取数据库配置，支持Docker部署
 DB_CONFIG = {
-    'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'huicheng',
-    'password': 'Huicheng@2026',
-    'database': 'huicheng_wsp',
+    'host': os.getenv('DB_HOST', '127.0.0.1'),
+    'port': int(os.getenv('DB_PORT', 3306)),
+    'user': os.getenv('DB_USER', 'huicheng'),
+    'password': os.getenv('DB_PASSWORD', 'Huicheng@2026'),
+    'database': os.getenv('DB_NAME', 'huicheng_wsp'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor,
 }
