@@ -261,6 +261,7 @@ a { text-decoration:none; color:inherit; }
       <div class="nav-section-title">管理</div>
       <div class="nav-item" data-page="template" onclick="navigateTo('template')"><span class="icon">📝</span> 模板管理</div>
       <div class="nav-item" data-page="gate-log" onclick="navigateTo('gate-log')"><span class="icon">🚦</span> 闸门日志</div>
+      <div class="nav-item" data-page="app-logs" onclick="navigateTo('app-logs')"><span class="icon">📜</span> 系统日志</div>
       <div class="nav-item" data-page="settings" onclick="navigateTo('settings')"><span class="icon">⚙️</span> 系统设置</div>
       <div class="nav-section-title">采集</div>
       <div class="nav-item" data-page="collection" onclick="navigateTo('collection')"><span class="icon">📋</span> 信息采集</div>
@@ -365,6 +366,37 @@ a { text-decoration:none; color:inherit; }
         <div class="card">
           <div class="card-title">🚦 闸门日志</div>
           <div id="gateLogList">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ App Logs ============ -->
+      <div class="page" id="page-app-logs">
+        <div class="card">
+          <div class="card-title">📜 系统日志</div>
+          
+          <!-- 过滤器 -->
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <select class="form-select" id="logLevelFilter" style="flex:1;min-width:120px;" onchange="loadAppLogs()">
+              <option value="">全部级别</option>
+              <option value="DEBUG">DEBUG</option>
+              <option value="INFO">INFO</option>
+              <option value="WARNING">WARNING</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+            <input type="date" class="form-input" id="logStartDate" style="flex:1;min-width:140px;" onchange="loadAppLogs()">
+            <input type="date" class="form-input" id="logEndDate" style="flex:1;min-width:140px;" onchange="loadAppLogs()">
+            <button class="btn btn-secondary btn-sm" onclick="clearLogFilters()">清除过滤</button>
+            <button class="btn btn-danger btn-sm" onclick="clearLogs()">清空日志</button>
+          </div>
+          
+          <!-- 统计信息 -->
+          <div id="logStats" style="margin-bottom:16px;padding:12px;background:rgba(52,120,246,0.08);border-radius:8px;font-size:13px;display:none;">
+          </div>
+          
+          <!-- 日志列表 -->
+          <div id="appLogList" style="max-height:600px;overflow-y:auto;">
             <div class="loading"><div class="spinner"></div>加载中...</div>
           </div>
         </div>
@@ -743,11 +775,12 @@ async function api(path, options = {}) {
 const pageTitles = {
   'dashboard': '仪表盘', 'report-list': '报告列表', 'generate': '生成报告',
   'report-detail': '报告详情', 'template': '模板管理', 'gate-log': '闸门日志',
-  'settings': '系统设置', 'collection': '信息采集'
+  'app-logs': '系统日志', 'settings': '系统设置', 'collection': '信息采集'
 };
 const pageLoaders = {
   'dashboard': loadDashboard, 'report-list': loadReports, 'generate': loadGenerateList,
-  'report-detail': loadReportDetail, 'template': loadTemplates, 'gate-log': loadGateLogs
+  'report-detail': loadReportDetail, 'template': loadTemplates, 'gate-log': loadGateLogs,
+  'app-logs': loadAppLogs
 };
 let currentRecordId = null;
 
@@ -813,15 +846,27 @@ async function loadDashboard() {
     if (data.trend.length === 0) {
       document.getElementById('dashboardTrend').innerHTML = '<div class="empty-state"><div class="desc">暂无趋势数据</div></div>';
     } else {
-      const maxCount = Math.max(...data.trend.map(t => t.count), 1);
+      // 按日期排序
+      const sortedTrend = data.trend.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const maxCount = Math.max(...sortedTrend.map(t => t.count), 1);
       const days = ['日','一','二','三','四','五','六'];
+      
       document.getElementById('dashboardTrend').innerHTML = `
-        <div class="trend-chart">${data.trend.map(t => {
+        <div class="trend-chart">${sortedTrend.map(t => {
           const h = (t.count / maxCount * 100) || 5;
           const d = new Date(t.date);
-          return `<div class="trend-bar" style="height:${h}%;background:var(--primary);opacity:${0.5 + t.count/maxCount*0.5};"></div>`;
+          const dayLabel = days[d.getDay()];
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div class="trend-bar" style="height:${h}px;background:var(--primary);opacity:${0.5 + t.count/maxCount*0.5};width:100%;border-radius:4px 4px 0 0;position:relative;min-height:20px;">
+              ${t.count > 0 ? `<span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--primary);">${t.count}</span>` : ''}
+            </div>
+          </div>`;
         }).join('')}</div>
-        <div class="trend-labels">${data.trend.map(t => { const d = new Date(t.date); return `<div style="flex:1">${days[d.getDay()]}</div>`; }).join('')}</div>
+        <div class="trend-labels">${sortedTrend.map(t => { 
+          const d = new Date(t.date); 
+          const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+          return `<div style="flex:1;text-align:center;font-size:10px;">${days[d.getDay()]}<br>${dateStr}</div>`; 
+        }).join('')}</div>
       `;
     }
   } catch (e) { document.getElementById('dashboardStats').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">加载失败</div><div class="desc">${e.message}</div></div>`; }
@@ -914,7 +959,13 @@ async function loadGenerateList() {
 }
 
 async function generateReport(recordId) {
-  showToast('报告生成中，请稍候...');
+  // 禁用按钮并显示加载状态
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  btn.style.opacity = '0.6';
+  
   try {
     const res = await api(`/api/reports/${recordId}/generate`, { method: 'POST' });
     if (res.success) {
@@ -922,15 +973,32 @@ async function generateReport(recordId) {
       loadGenerateList();
     } else {
       showToast('生成失败: ' + (res.error || '未知错误'));
+      // 恢复按钮状态
+      btn.disabled = false;
+      btn.textContent = originalText;
+      btn.style.opacity = '1';
     }
-  } catch (e) { showToast('生成失败: ' + e.message); }
+  } catch (e) {
+    showToast('生成失败: ' + e.message);
+    // 恢复按钮状态
+    btn.disabled = false;
+    btn.textContent = originalText;
+    btn.style.opacity = '1';
+  }
 }
 
 async function regenerateReport(recordId) {
   if (!confirm('确定要重新生成此报告吗？这将覆盖现有的报告内容。')) {
     return;
   }
-  showToast('报告重新生成中，请稍候...');
+  
+  // 禁用按钮并显示加载状态
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  btn.style.opacity = '0.6';
+  
   try {
     const res = await api(`/api/reports/${recordId}/generate`, { method: 'POST' });
     if (res.success) {
@@ -938,8 +1006,18 @@ async function regenerateReport(recordId) {
       loadGenerateList();
     } else {
       showToast('重新生成失败: ' + (res.error || '未知错误'));
+      // 恢复按钮状态
+      btn.disabled = false;
+      btn.textContent = originalText;
+      btn.style.opacity = '1';
     }
-  } catch (e) { showToast('重新生成失败: ' + e.message); }
+  } catch (e) {
+    showToast('重新生成失败: ' + e.message);
+    // 恢复按钮状态
+    btn.disabled = false;
+    btn.textContent = originalText;
+    btn.style.opacity = '1';
+  }
 }
 
 // ===== Report Detail =====
@@ -1140,6 +1218,93 @@ async function loadGateLogs() {
   } catch (e) { document.getElementById('gateLogList').innerHTML = `<div class="empty-state"><div class="desc">${e.message}</div></div>`; }
 }
 
+// ===== App Logs =====
+async function loadAppLogs() {
+  try {
+    const level = document.getElementById('logLevelFilter').value;
+    const startDate = document.getElementById('logStartDate').value;
+    const endDate = document.getElementById('logEndDate').value;
+    
+    let url = '/api/logs?limit=200';
+    if (level) url += `&level=${level}`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    
+    const logs = await api(url);
+    
+    if (logs.length === 0) {
+      document.getElementById('appLogList').innerHTML = '<div class="empty-state"><div class="icon">📜</div><div class="title">暂无日志</div></div>';
+      return;
+    }
+    
+    // 显示统计信息
+    loadLogStats();
+    
+    // 渲染日志列表
+    document.getElementById('appLogList').innerHTML = logs.map(log => {
+      const levelColor = {
+        'DEBUG': '#6c757d',
+        'INFO': '#3498db',
+        'WARNING': '#f39c12',
+        'ERROR': '#e74c3c'
+      }[log.level] || '#6c757d';
+      
+      return `
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-family:monospace;font-size:12px;line-height:1.6;">
+          <span style="color:${levelColor};font-weight:600;">[${log.level}]</span>
+          <span style="color:#999;margin-left:8px;">${log.timestamp}</span>
+          <div style="margin-top:4px;color:var(--text-primary);white-space:pre-wrap;">${log.message}</div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (e) {
+    document.getElementById('appLogList').innerHTML = `<div class="empty-state"><div class="desc">${e.message}</div></div>`;
+  }
+}
+
+async function loadLogStats() {
+  try {
+    const stats = await api('/api/logs/levels');
+    const total = Object.values(stats).reduce((a, b) => a + b, 0);
+    
+    document.getElementById('logStats').innerHTML = `
+      <strong>日志统计:</strong> 
+      总计 ${total} 条 | 
+      <span style="color:#6c757d;">DEBUG: ${stats.DEBUG}</span> | 
+      <span style="color:#3498db;">INFO: ${stats.INFO}</span> | 
+      <span style="color:#f39c12;">WARNING: ${stats.WARNING}</span> | 
+      <span style="color:#e74c3c;">ERROR: ${stats.ERROR}</span>
+    `;
+    document.getElementById('logStats').style.display = 'block';
+  } catch (e) {
+    console.error('加载日志统计失败:', e);
+  }
+}
+
+function clearLogFilters() {
+  document.getElementById('logLevelFilter').value = '';
+  document.getElementById('logStartDate').value = '';
+  document.getElementById('logEndDate').value = '';
+  loadAppLogs();
+}
+
+async function clearLogs() {
+  if (!confirm('确定要清空所有日志吗？此操作不可恢复！')) {
+    return;
+  }
+  
+  try {
+    const res = await api('/api/logs/clear', { method: 'POST' });
+    if (res.success) {
+      showToast('日志已清空');
+      loadAppLogs();
+    }
+  } catch (e) {
+    showToast('清空失败: ' + e.message);
+  }
+}
+
 // ===== Templates =====
 async function loadTemplates() {
   try {
@@ -1230,6 +1395,11 @@ let currentStep = 1;
 const stepNames = ['基本信息','体格测量','健康筛查','饮食与生活方式','中医初筛','减重目标','确认提交'];
 
 function goStep(step) {
+  // 验证当前步骤
+  if (step > currentStep && !validateStep(currentStep)) {
+    return;
+  }
+  
   document.getElementById('step-' + currentStep).style.display = 'none';
   currentStep = step;
   document.getElementById('step-' + currentStep).style.display = 'block';
@@ -1268,6 +1438,124 @@ function onSexChange() {
   const isFemale = sexEl ? sexEl.textContent.trim().includes('女') : false;
   document.getElementById('femaleGroup').style.display = isFemale ? 'block' : 'none';
   autoCalc();
+}
+
+// ===== Step Validation =====
+function validateStep(step) {
+  switch(step) {
+    case 1:
+      return validateStep1();
+    case 2:
+      return validateStep2();
+    case 3:
+      return validateStep3();
+    case 4:
+      return validateStep4();
+    case 5:
+      return validateStep5();
+    case 6:
+      return validateStep6();
+    default:
+      return true;
+  }
+}
+
+function validateStep1() {
+  const name = document.getElementById('f_name').value.trim();
+  const sexEl = document.querySelector('#f_sex .radio-btn.selected');
+  const age = parseInt(document.getElementById('f_age').value);
+  const phone = document.getElementById('f_phone').value.trim();
+  
+  if (!name) { showToast('请填写姓名'); return false; }
+  if (!sexEl) { showToast('请选择性别'); return false; }
+  if (!age || age < 18 || age > 100) { showToast('年龄应在18-100岁之间'); return false; }
+  if (!phone || !/^\d{11}$/.test(phone)) { showToast('请输入正确的11位手机号'); return false; }
+  
+  return true;
+}
+
+function validateStep2() {
+  const height = parseFloat(document.getElementById('f_height').value);
+  const weight = parseFloat(document.getElementById('f_weight').value);
+  const waist = parseFloat(document.getElementById('f_waist').value);
+  const hip = parseFloat(document.getElementById('f_hip').value);
+  const sbp = parseFloat(document.getElementById('f_sbp').value);
+  const dbp = parseFloat(document.getElementById('f_dbp').value);
+  const hr = parseFloat(document.getElementById('f_hr').value);
+  const bodyfat = parseFloat(document.getElementById('f_bodyfat').value);
+  const visceral = parseFloat(document.getElementById('f_visceral').value);
+  
+  if (!height || height < 100 || height > 250) { showToast('身高应在100-250cm之间'); return false; }
+  if (!weight || weight < 30 || weight > 300) { showToast('体重应在30-300kg之间'); return false; }
+  if (!waist) { showToast('请填写腰围'); return false; }
+  if (hip && waist >= hip) { showToast('腰围应小于臀围'); return false; }
+  if (sbp && (sbp < 60 || sbp > 250)) { showToast('收缩压应在60-250mmHg之间'); return false; }
+  if (dbp && (dbp < 40 || dbp > 150)) { showToast('舒张压应在40-150mmHg之间'); return false; }
+  if (hr && (hr < 40 || hr > 200)) { showToast('心率应在40-200次/分之间'); return false; }
+  if (bodyfat && (bodyfat < 5 || bodyfat > 60)) { showToast('体脂率应在5-60%之间'); return false; }
+  if (visceral && (visceral < 1 || visceral > 59)) { showToast('内脏脂肪等级应在1-59之间'); return false; }
+  
+  return true;
+}
+
+function validateStep3() {
+  const redFlags = getChecked('redflags');
+  if (redFlags.length === 0) { showToast('请至少选择一个红旗项或选择"无"'); return false; }
+  
+  return true;
+}
+
+function validateStep4() {
+  const eatingOut = document.getElementById('f_eating_out').value;
+  const nightSnack = document.getElementById('f_night_snack').value;
+  const stapleOily = document.getElementById('f_staple_oily').value;
+  const exercise = document.getElementById('f_exercise').value;
+  const sleep = document.getElementById('f_sleep').value;
+  const bowel = document.getElementById('f_bowel').value;
+  const stressEating = document.getElementById('f_stress_eating').value;
+  const water = document.getElementById('f_water').value;
+  const gainReasons = getChecked('gainReasons');
+  
+  if (!eatingOut) { showToast('请选择外食频率'); return false; }
+  if (!nightSnack) { showToast('请选择夜宵/零食/甜饮频率'); return false; }
+  if (!stapleOily) { showToast('请选择主食油腻程度'); return false; }
+  if (!exercise) { showToast('请选择运动频率'); return false; }
+  if (!sleep) { showToast('请选择睡眠状况'); return false; }
+  if (!bowel) { showToast('请选择排便情况'); return false; }
+  if (!stressEating) { showToast('请选择压力/情绪性进食情况'); return false; }
+  if (!water) { showToast('请选择饮水情况'); return false; }
+  if (gainReasons.length === 0) { showToast('请至少选择一个发胖原因'); return false; }
+  
+  return true;
+}
+
+function validateStep5() {
+  const tcmTendency = getChecked('tcmTendency');
+  if (tcmTendency.length === 0) { showToast('请至少选择一个体质倾向'); return false; }
+  
+  return true;
+}
+
+function validateStep6() {
+  const weight = parseFloat(document.getElementById('f_weight').value);
+  const waist = parseFloat(document.getElementById('f_waist').value);
+  const targetWeight = parseFloat(document.getElementById('f_target_weight').value);
+  const targetWaist = parseFloat(document.getElementById('f_target_waist').value);
+  const pastLoss = document.getElementById('f_past_loss').value;
+  const rsMetabolic = parseInt(document.getElementById('rs_metabolic').value);
+  const rsCardio = parseInt(document.getElementById('rs_cardio').value);
+  const rsExecution = parseInt(document.getElementById('rs_execution').value);
+  const rsRebound = parseInt(document.getElementById('rs_rebound').value);
+  
+  if (!pastLoss) { showToast('请选择既往减重经历'); return false; }
+  if (targetWeight && weight && targetWeight >= weight) { showToast('目标体重应小于当前体重'); return false; }
+  if (targetWaist && waist && targetWaist >= waist) { showToast('目标腰围应小于当前腰围'); return false; }
+  if (rsMetabolic < 1 || rsMetabolic > 5) { showToast('代谢风险评分应在1-5之间'); return false; }
+  if (rsCardio < 1 || rsCardio > 5) { showToast('心血管风险评分应在1-5之间'); return false; }
+  if (rsExecution < 1 || rsExecution > 5) { showToast('执行难度评分应在1-5之间'); return false; }
+  if (rsRebound < 1 || rsRebound > 5) { showToast('反弹风险评分应在1-5之间'); return false; }
+  
+  return true;
 }
 
 // ===== Auto Calc =====

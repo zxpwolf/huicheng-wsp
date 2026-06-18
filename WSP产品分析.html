@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSP 荟城减重报告生成系统 - 产品分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1890ff;
+            --primary-light: #e6f7ff;
+            --primary-dark: #096dd9;
+            --success: #52c41a;
+            --warning: #faad14;
+            --danger: #ff4d4f;
+            --text: #262626;
+            --text-secondary: #595959;
+            --border: #d9d9d9;
+            --bg: #ffffff;
+            --bg-gray: #fafafa;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 24px rgba(24, 144, 255, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .presentation {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        /* Slide Container - 4:3 Aspect Ratio */
+        .slide {
+            background: var(--bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 40px;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 4/3;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .slide:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+
+        /* Cover Slide */
+        .slide.cover {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, var(--primary-light) 100%);
+        }
+
+        .slide.cover::before {
+            height: 6px;
+        }
+
+        .cover-logo {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 32px;
+            box-shadow: 0 12px 32px rgba(24, 144, 255, 0.3);
+        }
+
+        .cover-logo svg {
+            width: 60px;
+            height: 60px;
+            fill: white;
+        }
+
+        .cover h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .cover h1 span {
+            color: var(--primary);
+        }
+
+        .cover .subtitle {
+            font-size: 24px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .cover .meta {
+            display: flex;
+            gap: 32px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .cover .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Slide Header */
+        .slide-header {
+            margin-bottom: 40px;
+        }
+
+        .slide-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            color: white;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .slide-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .slide-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            flex: 1;
+        }
+
+        .content-grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .content-grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .content-grid-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-gray);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .card-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* User Story Cards */
+        .story-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .story-card .role {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .story-card .story {
+            font-size: 15px;
+            color: var(--text);
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .story-card .acceptance {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+        }
+
+        /* Feature List */
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list .bullet {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-light);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .feature-list .bullet svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--primary);
+        }
+
+        .feature-list .feature-content {
+            flex: 1;
+        }
+
+        .feature-list .feature-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .feature-list .feature-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Mermaid Diagram */
+        .diagram-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-gray);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .mermaid {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* Architecture Diagram */
+        .arch-diagram {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .arch-layer {
+            display: flex;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .arch-layer-label {
+            width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            writing-mode: horizontal-tb;
+        }
+
+        .arch-layer-content {
+            flex: 1;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .arch-box {
+            flex: 1;
+            min-width: 120px;
+            padding: 16px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .arch-box:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .arch-box .box-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .arch-box .box-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .arch-box.input { border-color: #52c41a; background: #f6ffed; }
+        .arch-box.process { border-color: var(--primary); background: var(--primary-light); }
+        .arch-box.output { border-color: #722ed1; background: #f9f0ff; }
+        .arch-box.storage { border-color: #faad14; background: #fffbe6; }
+
+        /* Data Flow */
+        .dataflow {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .flow-node {
+            padding: 16px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .flow-node.input {
+            background: #f6ffed;
+            border: 2px solid #52c41a;
+            color: #389e0d;
+        }
+
+        .flow-node.process {
+            background: var(--primary-light);
+            border: 2px solid var(--primary);
+            color: var(--primary-dark);
+        }
+
+        .flow-node.output {
+            background: #f9f0ff;
+            border: 2px solid #722ed1;
+            color: #531dab;
+        }
+
+        .flow-node.storage {
+            background: #fffbe6;
+            border: 2px solid #faad14;
+            color: #d48806;
+        }
+
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            color: var(--text-secondary);
+            font-size: 20px;
+        }
+
+        .flow-arrow svg {
+            width: 40px;
+            height: 20px;
+        }
+
+        .flow-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        .tag-blue { background: var(--primary-light); color: var(--primary-dark); }
+        .tag-green { background: #f6ffed; color: #389e0d; }
+        .tag-purple { background: #f9f0ff; color: #531dab; }
+        .tag-orange { background: #fff7e6; color: #d46b08; }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            flex: 1;
+        }
+
+        .tech-category {
+            background: var(--bg-gray);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .tech-category-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .tech-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tech-item {
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tech-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        /* Footer */
+        .slide-footer {
+            position: absolute;
+            bottom: 20px;
+            left: 60px;
+            right: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .slide-footer .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slide-footer .brand-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        /* Gate Control Diagram */
+        .gate-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px;
+            background: var(--bg-gray);
+            border-radius: 12px;
+            margin-top: 16px;
+        }
+
+        .gate-node {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .gate-check {
+            background: #fff7e6;
+            border: 2px solid #faad14;
+            color: #d46b08;
+        }
+
+        .gate-pass {
+            background: #f6ffed;
+            border: 2px solid #52c41a;
+            color: #389e0d;
+        }
+
+        .gate-fail {
+            background: #fff1f0;
+            border: 2px solid #ff4d4f;
+            color: #cf1322;
+        }
+
+        .gate-arrow {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .slide {
+                padding: 40px;
+                aspect-ratio: auto;
+                min-height: 600px;
+            }
+
+            .cover h1 {
+                font-size: 36px;
+            }
+
+            .content-grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 24px;
+            }
+
+            .content-grid-2,
+            .content-grid-3,
+            .content-grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .slide {
+                page-break-after: always;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Cover -->
+        <div class="slide cover">
+            <div class="cover-logo">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+            </div>
+            <h1>WSP <span>荟城减重</span></h1>
+            <h1>报告生成系统</h1>
+            <p class="subtitle">产品分析与系统设计方案</p>
+            <div class="meta">
+                <div class="meta-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                    <span>2026年6月</span>
+                </div>
+                <div class="meta-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <span>ZEUS 系统解决方案</span>
+                </div>
+                <div class="meta-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/></svg>
+                    <span>医疗减重领域</span>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>1 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 2: Project Overview -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">01</div>
+                <h2 class="slide-title">项目概述</h2>
+                <p class="slide-subtitle">WSP 荟城减重报告生成系统核心价值</p>
+            </div>
+            <div class="content-grid content-grid-4">
+                <div class="card">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    </div>
+                    <h3 class="card-title">标准化报告</h3>
+                    <p class="card-desc">基于 V17 模板自动生成专业 PDF 报告，确保输出一致性和医疗规范性</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+                    </div>
+                    <h3 class="card-title">智能分级</h3>
+                    <p class="card-desc">自动计算 BMI、代谢综合征、肥胖分度等指标，实现精准健康评估</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    </div>
+                    <h3 class="card-title">闸门控制</h3>
+                    <p class="card-desc">多级质量校验机制，确保数据完整性和报告准确性</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-2z"/></svg>
+                    </div>
+                    <h3 class="card-title">AI 赋能</h3>
+                    <p class="card-desc">生成 MD 文件供 AI 深度解读，实现人机协同的智能化服务</p>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>2 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 3: User Stories -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">02</div>
+                <h2 class="slide-title">需求拆解 - 用户故事</h2>
+                <p class="slide-subtitle">核心用户场景与验收标准</p>
+            </div>
+            <div class="content-grid content-grid-2">
+                <div class="story-card">
+                    <div class="role">👨‍⚕️ 医生/健康管理师</div>
+                    <div class="story">作为医生，我希望系统能根据用户健康数据自动生成标准化报告，这样我可以快速了解用户状况并给出专业建议。</div>
+                    <div class="acceptance">
+                        <strong>验收标准：</strong>输入 JSON → 30秒内输出完整 PDF 报告，包含所有必填字段
+                    </div>
+                </div>
+                <div class="story-card">
+                    <div class="role">🏥 医疗机构</div>
+                    <div class="story">作为机构运营方，我们需要批量处理用户报告，系统应支持高并发和自动化流程。</div>
+                    <div class="acceptance">
+                        <strong>验收标准：</strong>支持 API 调用，单次处理 < 5秒，日处理量 > 10,000 份
+                    </div>
+                </div>
+                <div class="story-card">
+                    <div class="role">👤 减重用户</div>
+                    <div class="story">作为减重用户，我希望获得清晰易懂的健康报告，并能通过 AI 获取个性化的减重建议。</div>
+                    <div class="acceptance">
+                        <strong>验收标准：</strong>报告包含可视化图表，AI 解读通俗易懂且可操作
+                    </div>
+                </div>
+                <div class="story-card">
+                    <div class="role">🔧 系统管理员</div>
+                    <div class="story">作为管理员，我需要能够配置报告模板、调整分级标准，并监控系统运行状态。</div>
+                    <div class="acceptance">
+                        <strong>验收标准：</strong>模板可配置，分级规则可热更新，有完整的日志和监控
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>3 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 4: Feature List -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">03</div>
+                <h2 class="slide-title">功能清单</h2>
+                <p class="slide-subtitle">系统核心功能模块</p>
+            </div>
+            <div class="content-grid content-grid-2">
+                <div>
+                    <h3 style="font-size: 16px; color: var(--primary); margin-bottom: 16px;">📥 输入处理</h3>
+                    <ul class="feature-list">
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">JSON 数据解析</div>
+                                <div class="feature-desc">解析 record + derived 结构化数据</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">数据校验</div>
+                                <div class="feature-desc">必填项检查、格式验证、范围校验</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">数据补全</div>
+                                <div class="feature-desc">缺失字段标记、默认值填充</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: 16px; color: var(--primary); margin-bottom: 16px;">⚙️ 核心处理</h3>
+                    <ul class="feature-list">
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">自动分级计算</div>
+                                <div class="feature-desc">BMI、肥胖分度、代谢综合征判断</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">模板填充</div>
+                                <div class="feature-desc">V17 模板变量替换、条件渲染</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">闸门控制</div>
+                                <div class="feature-desc">多级校验、质量评分、异常拦截</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: 16px; color: var(--primary); margin-bottom: 16px;">📤 输出生成</h3>
+                    <ul class="feature-list">
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">PDF 报告生成</div>
+                                <div class="feature-desc">WeasyPrint 渲染、分页、水印</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">MD 文件生成</div>
+                                <div class="feature-desc">结构化 Markdown、AI 提示词模板</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">文件存储</div>
+                                <div class="feature-desc">OSS 上传、CDN 分发、生命周期管理</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: 16px; color: var(--primary); margin-bottom: 16px;">🔧 辅助功能</h3>
+                    <ul class="feature-list">
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">日志记录</div>
+                                <div class="feature-desc">操作日志、错误追踪、审计记录</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">监控告警</div>
+                                <div class="feature-desc">性能监控、异常告警、健康检查</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="bullet"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+                            <div class="feature-content">
+                                <div class="feature-name">配置管理</div>
+                                <div class="feature-desc">模板配置、规则配置、环境配置</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>4 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 5: Business Flow -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">04</div>
+                <h2 class="slide-title">业务流程</h2>
+                <p class="slide-subtitle">报告生成核心业务流程</p>
+            </div>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TD
+    A[接收健康数据 JSON] --> B{数据校验}
+    B -->|校验失败| C[返回错误信息]
+    B -->|校验通过| D[解析 record 数据]
+    D --> E[解析 derived 数据]
+    E --> F[自动分级计算]
+    F --> G{闸门检查}
+    G -->|未通过| H[标记异常 & 人工审核]
+    G -->|通过| I[加载 V17 模板]
+    I --> J[模板变量填充]
+    J --> K[条件内容渲染]
+    K --> L[生成 PDF 报告]
+    K --> M[生成 MD 文件]
+    L --> N[上传 OSS]
+    M --> N
+    N --> O[返回结果]
+    
+    style A fill:#f6ffed,stroke:#52c41a,stroke-width:2px
+    style O fill:#f6ffed,stroke:#52c41a,stroke-width:2px
+    style C fill:#fff1f0,stroke:#ff4d4f,stroke-width:2px
+    style H fill:#fff7e6,stroke:#faad14,stroke-width:2px
+    style F fill:#e6f7ff,stroke:#1890ff,stroke-width:2px
+    style L fill:#f9f0ff,stroke:#722ed1,stroke-width:2px
+    style M fill:#f9f0ff,stroke:#722ed1,stroke-width:2px
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>5 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 6: System Architecture -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">05</div>
+                <h2 class="slide-title">系统架构</h2>
+                <p class="slide-subtitle">分层架构设计与模块划分</p>
+            </div>
+            <div class="arch-diagram">
+                <div class="arch-layer">
+                    <div class="arch-layer-label">接入层</div>
+                    <div class="arch-layer-content">
+                        <div class="arch-box input">
+                            <div class="box-title">REST API</div>
+                            <div class="box-desc">HTTP 接口服务</div>
+                        </div>
+                        <div class="arch-box input">
+                            <div class="box-title">消息队列</div>
+                            <div class="box-desc">异步任务处理</div>
+                        </div>
+                        <div class="arch-box input">
+                            <div class="box-title">SDK</div>
+                            <div class="box-desc">Python/Node 客户端</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">服务层</div>
+                    <div class="arch-layer-content">
+                        <div class="arch-box process">
+                            <div class="box-title">数据校验服务</div>
+                            <div class="box-desc">Schema 验证</div>
+                        </div>
+                        <div class="arch-box process">
+                            <div class="box-title">分级计算服务</div>
+                            <div class="box-desc">规则引擎</div>
+                        </div>
+                        <div class="arch-box process">
+                            <div class="box-title">模板渲染服务</div>
+                            <div class="box-desc">Thymeleaf + iText PDF</div>
+                        </div>
+                        <div class="arch-box process">
+                            <div class="box-title">闸门控制服务</div>
+                            <div class="box-desc">质量校验</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">存储层</div>
+                    <div class="arch-layer-content">
+                        <div class="arch-box storage">
+                            <div class="box-title">OSS 对象存储</div>
+                            <div class="box-desc">PDF/MD 文件</div>
+                        </div>
+                        <div class="arch-box storage">
+                            <div class="box-title">Redis 缓存</div>
+                            <div class="box-desc">模板/配置</div>
+                        </div>
+                        <div class="arch-box storage">
+                            <div class="box-title">PostgreSQL</div>
+                            <div class="box-desc">任务记录</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-layer-label">基础设施</div>
+                    <div class="arch-layer-content">
+                        <div class="arch-box">
+                            <div class="box-title">Docker</div>
+                            <div class="box-desc">容器化部署</div>
+                        </div>
+                        <div class="arch-box">
+                            <div class="box-title">Kubernetes</div>
+                            <div class="box-desc">编排调度</div>
+                        </div>
+                        <div class="arch-box">
+                            <div class="box-title">Prometheus</div>
+                            <div class="box-desc">监控告警</div>
+                        </div>
+                        <div class="arch-box">
+                            <div class="box-title">ELK</div>
+                            <div class="box-desc">日志分析</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>6 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 7: Data Flow -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">06</div>
+                <h2 class="slide-title">数据流设计</h2>
+                <p class="slide-subtitle">数据处理与转换流程</p>
+            </div>
+            <div class="dataflow">
+                <div class="flow-row">
+                    <div class="flow-node input">
+                        <div>📥 输入数据</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Health JSON</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node process">
+                        <div>🔍 数据校验</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Schema Validation</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node process">
+                        <div>⚙️ 分级计算</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Rule Engine</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node process">
+                        <div>📝 模板填充</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Template Render</div>
+                    </div>
+                </div>
+                <div class="flow-row" style="justify-content: flex-end;">
+                    <div class="flow-node output">
+                        <div>📄 PDF 报告</div>
+                        <div style="font-size: 11px; margin-top: 4px;">iText PDF</div>
+                    </div>
+                    <div class="flow-arrow" style="transform: scaleX(-1);">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node process">
+                        <div>🚦 闸门控制</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Quality Gate</div>
+                    </div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-node output">
+                        <div>📋 MD 文件</div>
+                        <div style="font-size: 11px; margin-top: 4px;">AI Prompt</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node storage">
+                        <div>☁️ OSS 存储</div>
+                        <div style="font-size: 11px; margin-top: 4px;">File Storage</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node output">
+                        <div>🔗 CDN 分发</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Content Delivery</div>
+                    </div>
+                    <div class="flow-arrow">
+                        <svg viewBox="0 0 40 20"><path d="M0 10 L30 10 M25 5 L30 10 L25 15" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                    </div>
+                    <div class="flow-node input">
+                        <div>👤 用户访问</div>
+                        <div style="font-size: 11px; margin-top: 4px;">End User</div>
+                    </div>
+                </div>
+            </div>
+            <div class="gate-flow">
+                <span style="font-size: 13px; color: var(--text-secondary); margin-right: 12px;">闸门逻辑：</span>
+                <div class="gate-node gate-check">数据完整性检查</div>
+                <span class="gate-arrow">→</span>
+                <div class="gate-node gate-check">分级合理性检查</div>
+                <span class="gate-arrow">→</span>
+                <div class="gate-node gate-check">模板渲染检查</div>
+                <span class="gate-arrow">→</span>
+                <div class="gate-node gate-pass">✓ 通过输出</div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>7 / 8</span>
+            </div>
+        </div>
+
+        <!-- Slide 8: Tech Stack -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-number">07</div>
+                <h2 class="slide-title">技术选型</h2>
+                <p class="slide-subtitle">核心技术栈与工具链</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-category">
+                    <div class="tech-category-title">☕ 后端框架</div>
+                    <div class="tech-items">
+                        <div class="tech-item"><span class="dot"></span>Java 17+</div>
+                        <div class="tech-item"><span class="dot"></span>Spring Boot 3.x</div>
+                        <div class="tech-item"><span class="dot"></span>MyBatis-Plus</div>
+                        <div class="tech-item"><span class="dot"></span>Spring Batch</div>
+                    </div>
+                </div>
+                <div class="tech-category">
+                    <div class="tech-category-title">📄 报告生成</div>
+                    <div class="tech-items">
+                        <div class="tech-item"><span class="dot" style="background: #722ed1;"></span>iText PDF</div>
+                        <div class="tech-item"><span class="dot" style="background: #722ed1;"></span>Thymeleaf</div>
+                        <div class="tech-item"><span class="dot" style="background: #722ed1;"></span>FreeMarker</div>
+                        <div class="tech-item"><span class="dot" style="background: #722ed1;"></span>V17 模板</div>
+                    </div>
+                </div>
+                <div class="tech-category">
+                    <div class="tech-category-title">💾 数据存储</div>
+                    <div class="tech-items">
+                        <div class="tech-item"><span class="dot" style="background: #faad14;"></span>MySQL 8.0</div>
+                        <div class="tech-item"><span class="dot" style="background: #faad14;"></span>Redis</div>
+                        <div class="tech-item"><span class="dot" style="background: #faad14;"></span>阿里云 OSS</div>
+                        <div class="tech-item"><span class="dot" style="background: #faad14;"></span>CDN</div>
+                    </div>
+                </div>
+                <div class="tech-category">
+                    <div class="tech-category-title">🚀 部署运维</div>
+                    <div class="tech-items">
+                        <div class="tech-item"><span class="dot" style="background: #52c41a;"></span>Docker</div>
+                        <div class="tech-item"><span class="dot" style="background: #52c41a;"></span>Kubernetes</div>
+                        <div class="tech-item"><span class="dot" style="background: #52c41a;"></span>GitHub Actions</div>
+                        <div class="tech-item"><span class="dot" style="background: #52c41a;"></span>Prometheus</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 24px; padding: 20px; background: var(--primary-light); border-radius: 12px; border: 1px solid var(--primary);">
+                <h4 style="font-size: 14px; color: var(--primary-dark); margin-bottom: 12px;">💡 关键技术决策</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;">iText vs Apache PDFBox</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">选择 iText：Java 原生 PDF 库，模板填充能力强，支持中文</div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;">Spring Boot 3.x</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">成熟稳定、生态丰富、企业级支持、微服务架构友好</div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px;">Spring Batch 批处理</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">PDF 生成耗时操作，使用批处理框架异步执行，提升吞吐量</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <span>荟城减重 · 医疗健康</span>
+                </div>
+                <span>8 / 8</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

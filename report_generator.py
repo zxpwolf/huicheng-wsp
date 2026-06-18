@@ -128,6 +128,123 @@ def compute_derived(record):
     return derived
 
 
+def gate_check_level1(record):
+    """第一级闸门检查 - 数据完整性检查"""
+    required_fields = {
+        'name': '姓名', 'sex': '性别', 'age': '年龄',
+        'height_cm': '身高', 'weight_kg': '体重'
+    }
+    missing = []
+    for field, label in required_fields.items():
+        if not record.get(field):
+            missing.append(label)
+    
+    if missing:
+        return False, f"数据不完整：缺少{','.join(missing)}"
+    return True, None
+
+
+def gate_check_level2(record, derived):
+    """第二级闸门检查 - 分级合理性检查"""
+    warnings = []
+    
+    # BMI异常警告
+    bmi = derived.get('bmi')
+    if bmi and (bmi < 15 or bmi > 50):
+        warnings.append(f"BMI值异常({bmi}),请核实数据")
+    
+    # 血压严重异常
+    bp_level = derived.get('bp_level')
+    if bp_level and '高血压3级' in bp_level:
+        warnings.append("血压达到高血压3级,建议立即就医")
+    
+    # 心率异常
+    hr = record.get('heart_rate')
+    if hr and (hr < 45 or hr > 120):
+        warnings.append(f"心率异常({hr}次/分)")
+    
+    if warnings:
+        return False, "；".join(warnings)
+    return True, None
+
+
+def gate_check_level3(record, derived):
+    """第三级闸门检查 - 业务规则检查"""
+    # 红旗项阻断
+    red_flags = record.get('red_positive', [])
+    if red_flags and len(red_flags) > 0:
+        return False, f"红旗项阻断：{'、'.join(red_flags)}"
+    
+    # 外治禁忌检查
+    cautions = record.get('external_cautions', [])
+    if '血压禁忌' in cautions and derived.get('bp_level') and '高血压' in derived['bp_level']:
+        return False, "存在高血压且标记血压禁忌,不适合外治"
+    
+    return True, None
+
+
+def check_missing_optional(record):
+    """检查缺失的非必填重要字段"""
+    missing = []
+    important_optional = {
+        'body_fat_percent': '体脂率',
+        'visceral_fat_level': '内脏脂肪等级',
+        'sbp': '收缩压',
+        'dbp': '舒张压',
+        'heart_rate': '静息心率',
+        'hip_cm': '臀围',
+        'target_weight_kg': '目标体重',
+        'waist_cm': '腰围'
+    }
+    for field, label in important_optional.items():
+        if not record.get(field):
+            missing.append(label)
+    return missing
+
+
+def generate_doctor_suggestions(record, derived):
+    """根据数据生成医生解读建议"""
+    suggestions = []
+    
+    # 基于BMI的建议
+    bmi = derived.get('bmi')
+    if bmi and bmi >= 28:
+        suggestions.append("BMI达到肥胖标准,建议优先控制饮食热量摄入")
+    elif bmi and bmi >= 24:
+        suggestions.append("BMI超重,建议适度减少主食和油腻食物")
+    
+    # 基于血压的建议
+    bp_level = derived.get('bp_level')
+    if bp_level and '高血压' in bp_level:
+        suggestions.append("血压偏高,建议低盐饮食,定期监测血压")
+    
+    # 基于腰围的建议
+    waist_level = derived.get('waist_level')
+    if waist_level and '超标' in waist_level:
+        suggestions.append("腰围超标提示腹型肥胖,重点加强有氧运动")
+    
+    # 基于生活方式的建议
+    if record.get('sleep_status') in ['经常熬夜', '严重失眠']:
+        suggestions.append("睡眠质量差会影响代谢,建议调整作息")
+    
+    if record.get('exercise_frequency') == '很少运动':
+        suggestions.append("缺乏运动是主要阻力,建议从每天步行开始")
+    
+    if record.get('stress_eating') in ['明显', '非常明显']:
+        suggestions.append("存在情绪性进食,建议学习压力管理技巧")
+    
+    # 基于中医体质的建议
+    tcm_tendency = record.get('tcm_tendency', [])
+    if '痰湿质' in tcm_tendency:
+        suggestions.append("痰湿体质,建议健脾祛湿,少吃生冷油腻")
+    if '阳虚质' in tcm_tendency:
+        suggestions.append("阳虚体质,建议温补阳气,注意保暖")
+    if '肝郁质' in tcm_tendency:
+        suggestions.append("肝郁体质,建议疏肝解郁,保持心情舒畅")
+    
+    return "；".join(suggestions) if suggestions else "各项指标基本正常,保持健康生活方式即可"
+
+
 # ========== 通用 CSS ==========
 REPORT_CSS = """
 @page {
@@ -234,6 +351,9 @@ def generate_report_html(record, derived, template_content=None):
     cautions = record.get('external_cautions', [])
     risk_scores = record.get('risk_scores', {})
 
+    # 生成医生解读建议
+    doctor_suggestions = generate_doctor_suggestions(record, derived)
+
     target_w = record.get('target_weight_kg')
     target_waist = record.get('target_waist_cm')
     weight = record.get('weight_kg')
@@ -304,6 +424,7 @@ def generate_report_html(record, derived, template_content=None):
     <div class="toc-item">六、减重目标</div>
     <div class="toc-item">七、风险评分</div>
     <div class="toc-item">八、闸门判断</div>
+    <div class="toc-item">九、医生解读建议</div>
 </div>
 
 <!-- 一、基本信息 -->
@@ -394,6 +515,15 @@ def generate_report_html(record, derived, template_content=None):
     <p style="margin:8px 0">报告闸门：{record.get('report_permission', '—')}</p>
 </div>
 
+<!-- 九、医生解读建议 -->
+<div class="section">
+    <div class="section-title">九、医生解读建议</div>
+    <div class="alert-box-green">
+        <strong>💡 重点关注</strong><br>
+        {doctor_suggestions}
+    </div>
+</div>
+
 </body>
 </html>"""
     return html
@@ -435,6 +565,9 @@ def generate_md(record, derived):
             waist_diff_val = '—'
 
     med_detail_str = f"，{record.get('med_detail')}" if record.get('med_detail') else ''
+    
+    # 生成医生解读建议
+    doctor_suggestions = generate_doctor_suggestions(record, derived)
 
     md = f"""# {name} · 减重报告生成任务
 
@@ -518,17 +651,35 @@ def generate_md(record, derived):
 |------|------|
 {risk_table(record.get('risk_scores', {}))}
 
+## 九、医生解读建议
+
+{doctor_suggestions}
+
 ---
 
-## 生成要求
+## 生成要求增强版
 
-1. 用 V17 报告模板结构生成完整报告（封面→目录→体格评估→代谢心血管风险→中医辨证→生活方式→30天方案→预期效果）
-2. 中医部分必须包含：辨证分型、病机分析、证候描述、调理方向
-3. 30天方案包含：日历表（第1-4周）、饮食建议、运动建议、外治建议、中药调理建议
-4. 语言专业但易懂，面向用户
-5. **禁止编造** 未在数据中出现的诊断/数值
-6. 风险提示明确，建议就医的放在显眼位置
-7. 报告使用 V17 标准颜色体系（主色#146C86、强调橙#E8833A、绿#42A36A、红#C94B4B、黄#F2B84B）
+1. **报告结构**: 严格按照V17模板生成9个章节（封面→目录→体格评估→代谢心血管风险→中医辨证→生活方式→30天方案→预期效果→医生解读建议）
+2. **语言风格**: 专业但亲切,避免过于医学术语,让普通用户也能理解
+3. **数据引用**: 所有结论必须基于提供的数据,**禁止编造**未在数据中出现的诊断/数值
+4. **风险提示**: 
+   - 高血压2级以上必须标注"建议立即就医"
+   - 红旗项必须在显眼位置提醒
+   - 外治禁忌必须明确列出
+5. **个性化建议**: 
+   - 根据体质倾向给出中医调理方向
+   - 根据生活方式给出可执行的改善建议
+   - 根据风险评分给出优先级排序
+6. **30天方案**: 
+   - 第1周:适应期(温和调整,建立习惯)
+   - 第2-3周:强化期(严格执行,加大力度)
+   - 第4周:巩固期(形成习惯,预防反弹)
+   - 包含：日历表、饮食建议、运动建议、外治建议、中药调理建议
+7. **格式要求**: 
+   - 使用Markdown表格展示数据对比
+   - 使用列表展示建议和行动计划
+   - 使用引用块(>)标注重要提示和警告
+   - 关键数据加粗显示
 
 请开始生成报告。
 """
