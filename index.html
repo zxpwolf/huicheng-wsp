@@ -1740,7 +1740,22 @@ async function submitForm() {
   }
 }
 
+// ===== URL参数处理 =====
+function handleUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  
+  if (mode === 'input') {
+    // 直接进入报告采集页面
+    showPage('report-input');
+    // 清除URL参数,避免刷新时重复跳转
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  // 其他模式可以在这里扩展
+}
+
 // ===== Init =====
+handleUrlParams(); // 处理URL参数
 loadDashboard();
 </script>
 </body>

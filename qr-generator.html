@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>生成采集页面二维码</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.container {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 14px;
+}
+input[type="text"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: border-color 0.3s;
+}
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+.btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+.btn:active {
+  transform: translateY(0);
+}
+.qr-container {
+  margin-top: 30px;
+  text-align: center;
+  display: none;
+}
+.qr-container.show {
+  display: block;
+  animation: fadeIn 0.5s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#qrcode {
+  margin: 20px auto;
+  padding: 20px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: inline-block;
+}
+.qr-url {
+  margin-top: 15px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #666;
+  word-break: break-all;
+}
+.download-btn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.download-btn:hover {
+  background: #45a049;
+}
+.tips {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #856404;
+  line-height: 1.6;
+}
+.tips strong {
+  display: block;
+  margin-bottom: 5px;
+}
+</style>
+<!-- QRCode.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>📱 生成采集页面二维码</h1>
+  <p class="subtitle">生成二维码供手机扫描访问报告采集页面</p>
+  
+  <div class="form-group">
+    <label for="serverUrl">服务器地址:</label>
+    <input type="text" id="serverUrl" placeholder="例如: http://47.104.220.141:80" value="">
+  </div>
+  
+  <button class="btn" onclick="generateQR()">生成二维码</button>
+  
+  <div class="qr-container" id="qrContainer">
+    <div id="qrcode"></div>
+    <div class="qr-url" id="qrUrl"></div>
+    <button class="download-btn" onclick="downloadQR()">📥 下载二维码图片</button>
+  </div>
+  
+  <div class="tips">
+    <strong>💡 使用说明:</strong>
+    1. 输入您的服务器地址(包含端口号)<br>
+    2. 点击"生成二维码"按钮<br>
+    3. 扫描二维码下载或直接分享给用户<br>
+    4. 用户扫码后将直接进入报告采集页面
+  </div>
+</div>
+
+<script>
+let currentQR = null;
+
+// 自动填充当前域名
+window.onload = function() {
+  const currentHost = window.location.origin;
+  if (currentHost && currentHost !== 'null') {
+    document.getElementById('serverUrl').value = currentHost;
+  }
+};
+
+function generateQR() {
+  const serverUrl = document.getElementById('serverUrl').value.trim();
+  
+  if (!serverUrl) {
+    alert('请输入服务器地址!');
+    return;
+  }
+  
+  // 构建完整URL
+  const fullUrl = serverUrl + '/?mode=input';
+  
+  // 清除旧二维码
+  const qrDiv = document.getElementById('qrcode');
+  qrDiv.innerHTML = '';
+  
+  // 生成新二维码
+  try {
+    currentQR = new QRCode(qrDiv, {
+      text: fullUrl,
+      width: 256,
+      height: 256,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    
+    // 显示结果
+    document.getElementById('qrUrl').textContent = fullUrl;
+    document.getElementById('qrContainer').classList.add('show');
+    
+  } catch (e) {
+    alert('生成二维码失败: ' + e.message);
+  }
+}
+
+function downloadQR() {
+  const qrCanvas = document.querySelector('#qrcode canvas');
+  if (!qrCanvas) {
+    alert('请先生成二维码!');
+    return;
+  }
+  
+  // 创建下载链接
+  const link = document.createElement('a');
+  link.download = 'wsp-collection-qrcode.png';
+  link.href = qrCanvas.toDataURL('image/png');
+  link.click();
+}
+</script>
+</body>
+</html>
