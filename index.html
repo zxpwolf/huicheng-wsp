@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>荟城减重 · WSP报告生成系统</title>
+<style>
+:root {
+  --primary: #146C86; --primary-light: #1A8DAD; --primary-dark: #0F5568;
+  --accent-orange: #E8833A; --accent-green: #42A36A; --accent-red: #C94B4B; --accent-yellow: #F2B84B;
+  --bg: #F5F7FA; --card: #FFFFFF; --text: #2C3E50; --text-secondary: #7F8C9B; --border: #E4E8ED;
+  --sidebar-bg: #0A2A3C; --sidebar-active: rgba(255,255,255,0.12);
+  --shadow: 0 2px 12px rgba(0,0,0,0.08); --radius: 12px; --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+input,select,textarea,button { font-family: inherit; font-size: inherit; }
+a { text-decoration:none; color:inherit; }
+.app { display:flex; height:100vh; width:100vw; overflow:hidden; }
+
+/* Sidebar */
+.sidebar { width:220px; min-width:220px; background:var(--sidebar-bg); display:flex; flex-direction:column; transition:transform 0.3s ease; z-index:100; }
+.sidebar-brand { padding:24px 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.sidebar-brand .logo { display:flex; align-items:center; gap:10px; }
+.sidebar-brand .logo-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; font-weight:700; }
+.sidebar-brand .logo-text { color:#fff; font-size:16px; font-weight:600; letter-spacing:0.5px; }
+.sidebar-brand .logo-sub { color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px; }
+.sidebar-nav { flex:1; padding:12px 0; overflow-y:auto; }
+.nav-section-title { padding:16px 20px 6px; font-size:11px; color:rgba(255,255,255,0.35); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:11px 20px; color:rgba(255,255,255,0.65); cursor:pointer; transition:all 0.2s; border-left:3px solid transparent; font-size:14px; }
+.nav-item:hover { background:var(--sidebar-active); color:#fff; }
+.nav-item.active { background:var(--sidebar-active); color:#fff; border-left-color:var(--accent-orange); }
+.nav-item .icon { width:20px; text-align:center; font-size:16px; opacity:0.8; }
+
+/* Main */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.mobile-header { display:none; align-items:center; padding:12px 16px; background:var(--primary); color:#fff; min-height:56px; }
+.mobile-header .menu-btn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; border-radius:8px; }
+.mobile-header .menu-btn:hover { background:rgba(255,255,255,0.15); }
+.mobile-header .title { flex:1; text-align:center; font-size:17px; font-weight:600; }
+.mobile-header .placeholder { width:36px; }
+.content { flex:1; overflow-y:auto; padding:20px; -webkit-overflow-scrolling:touch; }
+.page { display:none; }
+.page.active { display:block; animation:fadeIn 0.25s ease-out; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+
+/* Cards */
+.card { background:var(--card); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow); }
+.card-title { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.badge { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:500; }
+.badge-orange { background:rgba(232,131,58,0.12); color:var(--accent-orange); }
+.badge-green { background:rgba(66,163,106,0.12); color:var(--accent-green); }
+.badge-red { background:rgba(201,75,75,0.12); color:var(--accent-red); }
+.badge-blue { background:rgba(20,108,134,0.12); color:var(--primary); }
+
+/* Dashboard */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+.stat-card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+.stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; }
+.stat-card.blue::before { background:var(--primary); }
+.stat-card.orange::before { background:var(--accent-orange); }
+.stat-card.green::before { background:var(--accent-green); }
+.stat-card.red::before { background:var(--accent-red); }
+.stat-label { font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+.stat-value { font-size:28px; font-weight:700; line-height:1.2; }
+.stat-sub { font-size:12px; color:var(--text-secondary); margin-top:4px; }
+
+/* Report List */
+.report-item { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); display:flex; align-items:center; gap:14px; cursor:pointer; transition:transform 0.15s; }
+.report-item:active { transform:scale(0.98); }
+.report-avatar { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0; }
+.report-info { flex:1; min-width:0; }
+.report-name { font-weight:600; font-size:15px; }
+.report-meta { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+.report-status { font-size:12px; padding:4px 10px; border-radius:6px; font-weight:500; white-space:nowrap; }
+.status-done { background:rgba(66,163,106,0.1); color:var(--accent-green); }
+.status-pending { background:rgba(242,184,75,0.1); color:var(--accent-yellow); }
+.status-blocked { background:rgba(201,75,75,0.1); color:var(--accent-red); }
+
+/* Step Form */
+.step-progress { display:flex; align-items:center; justify-content:center; margin-bottom:16px; padding:0 10px; }
+.step-dot { width:28px; height:28px; border-radius:50%; background:var(--border); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; transition:all 0.3s; flex-shrink:0; z-index:1; }
+.step-dot.active { background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(20,108,134,0.35); }
+.step-dot.done { background:var(--accent-green); color:#fff; }
+.step-line { flex:1; height:3px; background:var(--border); transition:background 0.3s; }
+.step-line.done { background:var(--accent-green); }
+.step-label { text-align:center; font-size:15px; font-weight:600; color:var(--primary); margin-bottom:4px; }
+.step-sublabel { text-align:center; font-size:12px; color:var(--text-secondary); }
+
+/* Form */
+.form-group { margin-bottom:18px; }
+.form-label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+.form-label .required { color:var(--accent-red); margin-left:2px; }
+.form-input { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:15px; color:var(--text); background:#fff; transition:border-color 0.2s,box-shadow 0.2s; outline:none; -webkit-appearance:none; }
+.form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(20,108,134,0.12); }
+.form-input::placeholder { color:#B8C2CC; }
+.form-hint { font-size:12px; color:var(--text-secondary); margin-top:4px; }
+.form-row { display:flex; gap:12px; }
+.form-row .form-group { flex:1; }
+.radio-group { display:flex; gap:10px; flex-wrap:wrap; }
+.radio-btn { padding:10px 20px; border:1.5px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:all 0.2s; font-size:14px; display:flex; align-items:center; gap:6px; user-select:none; }
+.radio-btn:hover { border-color:var(--primary); }
+.radio-btn.selected { border-color:var(--primary); background:rgba(20,108,134,0.06); color:var(--primary); font-weight:600; }
+.radio-btn .dot { width:16px; height:16px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+.radio-btn.selected .dot { border-color:var(--primary); }
+.radio-btn.selected .dot::after { content:''; width:8px; height:8px; border-radius:50%; background:var(--primary); }
+.checkbox-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
+.checkbox-item { padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:all 0.2s; font-size:13px; display:flex; align-items:center; gap:8px; user-select:none; }
+.checkbox-item:hover { border-color:var(--primary-light); }
+.checkbox-item.checked { border-color:var(--primary); background:rgba(20,108,134,0.06); font-weight:500; }
+.checkbox-item .check-box { width:18px; height:18px; border-radius:5px; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
+.checkbox-item.checked .check-box { border-color:var(--primary); background:var(--primary); }
+.checkbox-item.checked .check-box::after { content:'✓'; color:#fff; font-size:12px; font-weight:700; }
+.form-select { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:15px; color:var(--text); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237F8C9B' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 14px center; -webkit-appearance:none; appearance:none; outline:none; }
+.form-select:focus { border-color:var(--primary); }
+
+/* Buttons */
+.form-nav { display:flex; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid var(--border); }
+.btn { padding:12px 24px; border-radius:var(--radius-sm); font-size:15px; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; text-align:center; user-select:none; }
+.btn:active { transform:scale(0.97); }
+.btn-primary { background:var(--primary); color:#fff; flex:1; }
+.btn-primary:hover { background:var(--primary-light); }
+.btn-secondary { background:var(--bg); color:var(--text-secondary); border:1.5px solid var(--border); }
+.btn-success { background:var(--accent-green); color:#fff; }
+.btn-success:hover { background:#3a9460; }
+.btn-warning { background:var(--accent-yellow); color:#fff; }
+.btn-warning:hover { background:#d4a23f; }
+.btn-orange { background:var(--accent-orange); color:#fff; flex:1; }
+.btn-green { background:var(--accent-green); color:#fff; }
+.btn-outline { background:transparent; color:var(--primary); border:1.5px solid var(--primary); }
+.btn-sm { padding:8px 16px; font-size:13px; }
+.btn-block { width:100%; }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* Calc Result */
+.calc-result { background:linear-gradient(135deg,var(--primary-dark),var(--primary)); color:#fff; border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.calc-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
+.calc-row:not(:last-child) { border-bottom:1px solid rgba(255,255,255,0.12); }
+.calc-label { font-size:13px; opacity:0.85; }
+.calc-value { font-size:15px; font-weight:600; }
+.calc-value.warn { color:var(--accent-yellow); }
+.calc-value.danger { color:var(--accent-red); }
+.calc-value.good { color:#7FE5A0; }
+
+/* Report Preview */
+.report-cover { background:linear-gradient(160deg,#0A2A3C 0%,var(--primary-dark) 40%,var(--primary) 100%); color:#fff; border-radius:var(--radius); padding:40px 24px; text-align:center; margin-bottom:16px; }
+.report-cover .cover-logo { font-size:32px; font-weight:700; margin-bottom:8px; letter-spacing:2px; }
+.report-cover .cover-sub { font-size:14px; opacity:0.7; margin-bottom:24px; }
+.report-cover .cover-title { font-size:22px; font-weight:600; margin-bottom:8px; }
+.report-cover .cover-info { font-size:13px; opacity:0.6; line-height:2; }
+.report-section { margin-bottom:16px; }
+.report-section-title { font-size:16px; font-weight:700; color:var(--primary); padding:12px 0 8px; border-bottom:2px solid var(--primary); margin-bottom:12px; }
+.report-table { width:100%; border-collapse:collapse; font-size:13px; }
+.report-table th,.report-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+.report-table th { background:var(--bg); font-weight:600; color:var(--text-secondary); font-size:12px; }
+.tag { display:inline-block; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:500; margin:2px; }
+.tag-blue { background:rgba(20,108,134,0.1); color:var(--primary); }
+.tag-orange { background:rgba(232,131,58,0.1); color:var(--accent-orange); }
+.tag-red { background:rgba(201,75,75,0.1); color:var(--accent-red); }
+.tag-green { background:rgba(66,163,106,0.1); color:var(--accent-green); }
+.tag-yellow { background:rgba(242,184,75,0.15); color:#C08B00; }
+
+/* Gate Log */
+.gate-item { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
+.gate-dot { width:10px; height:10px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+.gate-dot.pass { background:var(--accent-green); }
+.gate-dot.block { background:var(--accent-red); }
+.gate-dot.warn { background:var(--accent-yellow); }
+.gate-info { flex:1; }
+.gate-name { font-weight:600; font-size:14px; }
+.gate-detail { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+
+/* Overlay / Toast */
+.overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); z-index:99; }
+.overlay.show { display:block; }
+.toast { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9); background:rgba(0,0,0,0.8); color:#fff; padding:14px 24px; border-radius:10px; font-size:14px; z-index:1000; opacity:0; transition:all 0.3s; pointer-events:none; text-align:center; max-width:80%; }
+.toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+/* Loading */
+.loading { text-align:center; padding:40px 20px; color:var(--text-secondary); }
+.loading .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; margin:0 auto 12px; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Score Bar */
+.score-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin-top:4px; }
+.score-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+
+/* TCM Chart */
+.tcm-chart { display:flex; align-items:flex-end; gap:8px; height:120px; padding:8px 0; }
+.tcm-bar { flex:1; border-radius:6px 6px 0 0; position:relative; min-width:30px; }
+.tcm-bar-label { position:absolute; bottom:-24px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text-secondary); white-space:nowrap; }
+.tcm-bar-value { position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:12px; font-weight:600; }
+
+/* Empty */
+.empty-state { text-align:center; padding:48px 20px; color:var(--text-secondary); }
+.empty-state .icon { font-size:48px; margin-bottom:12px; opacity:0.4; }
+.empty-state .title { font-size:16px; font-weight:600; margin-bottom:4px; color:var(--text); }
+.empty-state .desc { font-size:13px; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); z-index:200; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:#fff; border-radius:var(--radius); padding:24px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal-title { font-size:18px; font-weight:600; margin-bottom:16px; }
+.modal-actions { display:flex; gap:10px; margin-top:20px; }
+
+/* Trend Chart */
+.trend-chart { display:flex; align-items:flex-end; gap:8px; height:100px; padding:8px 0; }
+.trend-bar { flex:1; border-radius:4px 4px 0 0; transition:height 0.5s ease; }
+.trend-labels { display:flex; gap:8px; font-size:11px; color:var(--text-secondary); text-align:center; }
+
+.sidebar-nav::-webkit-scrollbar,.content::-webkit-scrollbar { width:4px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
+.content::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.1); border-radius:2px; }
+
+@media (max-width: 768px) {
+  .sidebar { position:fixed; top:0;left:0;bottom:0; transform:translateX(-100%); z-index:200; }
+  .sidebar.open { transform:translateX(0); }
+  .mobile-header { display:flex; }
+  .content { padding:12px; }
+  .stat-grid { grid-template-columns:repeat(2,1fr); gap:8px; }
+  .stat-card { padding:12px; }
+  .stat-value { font-size:22px; }
+  .form-row { flex-direction:column; gap:0; }
+  .checkbox-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); }
+  .report-cover { padding:30px 16px; }
+  .report-cover .cover-logo { font-size:24px; }
+  .card { padding:16px; }
+}
+@media (max-width: 380px) {
+  .stat-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .radio-group { gap:6px; }
+  .radio-btn { padding:8px 14px; font-size:13px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">
+        <div class="logo-icon">荟</div>
+        <div>
+          <div class="logo-text">荟城减重</div>
+          <div class="logo-sub">WSP 报告生成系统</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-title">总览</div>
+      <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')"><span class="icon">📊</span> 仪表盘</div>
+      <div class="nav-section-title">报告</div>
+      <div class="nav-item" data-page="report-list" onclick="navigateTo('report-list')"><span class="icon">📋</span> 报告列表</div>
+      <div class="nav-item" data-page="generate" onclick="navigateTo('generate')"><span class="icon">🧬</span> 生成报告</div>
+      <div class="nav-item" data-page="report-detail" onclick="navigateTo('report-detail')"><span class="icon">📄</span> 报告详情</div>
+      <div class="nav-section-title">管理</div>
+      <div class="nav-item" data-page="template" onclick="navigateTo('template')"><span class="icon">📝</span> 模板管理</div>
+      <div class="nav-item" data-page="gate-log" onclick="navigateTo('gate-log')"><span class="icon">🚦</span> 闸门日志</div>
+      <div class="nav-item" data-page="settings" onclick="navigateTo('settings')"><span class="icon">⚙️</span> 系统设置</div>
+      <div class="nav-section-title">采集</div>
+      <div class="nav-item" data-page="collection" onclick="navigateTo('collection')"><span class="icon">📋</span> 信息采集</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="main">
+    <div class="mobile-header">
+      <div class="menu-btn" onclick="toggleSidebar()">☰</div>
+      <div class="title" id="mobileTitle">仪表盘</div>
+      <div class="placeholder"></div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ============ Dashboard ============ -->
+      <div class="page active" id="page-dashboard">
+        <div id="dashboardStats" class="stat-grid">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+        <div class="card">
+          <div class="card-title">⏱ 最近采集记录</div>
+          <div id="dashboardRecent"><div class="loading"><div class="spinner"></div>加载中...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 本周采集趋势</div>
+          <div id="dashboardTrend"><div class="loading"><div class="spinner"></div>加载中...</div></div>
+        </div>
+      </div>
+
+      <!-- ============ Report List ============ -->
+      <div class="page" id="page-report-list">
+        <div class="card" style="padding:12px 16px;">
+          <div style="display:flex;gap:8px;">
+            <input class="form-input" id="searchKeyword" placeholder="搜索姓名 / 报告编号" style="flex:1;padding:10px 12px;" oninput="loadReports()">
+            <select class="form-select" id="statusFilter" style="width:auto;min-width:90px;padding:10px 30px 10px 12px;" onchange="loadReports()">
+              <option value="全部">全部</option>
+              <option value="completed">已完成</option>
+              <option value="pending">待生成</option>
+              <option value="blocked">已阻断</option>
+            </select>
+          </div>
+        </div>
+        <div id="reportListContainer">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+
+      <!-- ============ Generate Report ============ -->
+      <div class="page" id="page-generate">
+        <div class="card">
+          <div class="card-title">📋 待生成报告</div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+            以下报告尚未生成，点击"生成"按钮创建 PDF 和 MD 报告。
+          </p>
+          <div id="pendingList">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">✅ 已生成报告</div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+            以下报告已生成，可下载 PDF/MD 文件或重新生成。
+          </p>
+          <div id="completedList">
+            <div class="empty-state"><div class="icon">📄</div><div class="title">暂无已生成报告</div></div>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:4px solid var(--accent-red);">
+          <div class="card-title" style="color:var(--accent-red);">⚠️ 闸门阻断</div>
+          <p style="font-size:13px;color:var(--text-secondary);">以下用户因红旗项被阻断，PDF报告将跳过生成，仅生成MD文件供医生审核：</p>
+          <div id="blockedList" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- ============ Report Detail ============ -->
+      <div class="page" id="page-report-detail">
+        <div id="reportDetailContainer">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+
+      <!-- ============ Template Management ============ -->
+      <div class="page" id="page-template">
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between;display:flex;">
+            <span>📝 报告模板管理</span>
+            <button class="btn btn-primary btn-sm" style="flex:none;" onclick="openTemplateModal()">+ 新建模板</button>
+          </div>
+          <div id="templateList">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Gate Log ============ -->
+      <div class="page" id="page-gate-log">
+        <div class="card">
+          <div class="card-title">🚦 闸门日志</div>
+          <div id="gateLogList">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Settings ============ -->
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="card-title">⚙️ 系统设置</div>
+          <div class="form-group">
+            <label class="form-label">默认模板版本</label>
+            <select class="form-select" id="settingTemplate">
+              <option>V17 标准模板</option>
+              <option>V16 标准模板</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">PDF输出规格</label>
+            <select class="form-select" id="settingPdfSize">
+              <option>A4 纵向</option>
+              <option>A4 横向</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">闸门模式</label>
+            <div class="radio-group" id="settingGateMode">
+              <div class="radio-btn selected" onclick="selectRadio(this)"><span class="dot"></span> 严格模式</div>
+              <div class="radio-btn" onclick="selectRadio(this)"><span class="dot"></span> 宽松模式</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">自动生成MD</label>
+            <div class="radio-group" id="settingAutoMd">
+              <div class="radio-btn selected" onclick="selectRadio(this)"><span class="dot"></span> 开启</div>
+              <div class="radio-btn" onclick="selectRadio(this)"><span class="dot"></span> 关闭</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="showToast('设置已保存')">保存设置</button>
+        </div>
+      </div>
+
+      <!-- ============ Information Collection (Step Form) ============ -->
+      <div class="page" id="page-collection">
+        <div style="margin-bottom:20px;">
+          <div class="step-progress" id="stepProgress">
+            <div class="step-dot active" data-step="1">1</div><div class="step-line"></div>
+            <div class="step-dot" data-step="2">2</div><div class="step-line"></div>
+            <div class="step-dot" data-step="3">3</div><div class="step-line"></div>
+            <div class="step-dot" data-step="4">4</div><div class="step-line"></div>
+            <div class="step-dot" data-step="5">5</div><div class="step-line"></div>
+            <div class="step-dot" data-step="6">6</div><div class="step-line"></div>
+            <div class="step-dot" data-step="7">7</div>
+          </div>
+          <div class="step-label" id="stepLabel">基本信息</div>
+          <div class="step-sublabel" id="stepSublabel">Step 1/7</div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div class="step-content" id="step-1">
+          <div class="card">
+            <div class="card-title">👤 基本信息</div>
+            <div class="form-group">
+              <label class="form-label">姓名<span class="required">*</span></label>
+              <input class="form-input" id="f_name" placeholder="请输入姓名">
+            </div>
+            <div class="form-group">
+              <label class="form-label">性别<span class="required">*</span></label>
+              <div class="radio-group" id="f_sex">
+                <div class="radio-btn" onclick="selectRadio(this);onSexChange()"><span class="dot"></span> 男</div>
+                <div class="radio-btn" onclick="selectRadio(this);onSexChange()"><span class="dot"></span> 女</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">年龄<span class="required">*</span></label>
+              <input class="form-input" id="f_age" type="number" min="18" max="100" placeholder="18-100">
+              <div class="form-hint">请填写 18-100 之间的年龄</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">手机号<span class="required">*</span></label>
+              <input class="form-input" id="f_phone" type="tel" maxlength="11" placeholder="11位手机号码，用于接收健康报告">
+            </div>
+            <div class="form-group">
+              <label class="form-label">职业/活动状态</label>
+              <select class="form-select" id="f_occupation">
+                <option value="">请选择</option>
+                <option>久坐办公</option><option>轻度活动</option><option>中度活动</option>
+                <option>重体力劳动</option><option>退休居家</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-nav"><div style="flex:1"></div><button class="btn btn-primary" onclick="goStep(2)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 2: Body Measurements -->
+        <div class="step-content" id="step-2" style="display:none;">
+          <div class="card">
+            <div class="card-title">📏 体格测量</div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">身高(cm)<span class="required">*</span></label><input class="form-input" id="f_height" type="number" placeholder="如 175" oninput="autoCalc()"></div>
+              <div class="form-group"><label class="form-label">体重(kg)<span class="required">*</span></label><input class="form-input" id="f_weight" type="number" step="0.1" placeholder="如 88.5" oninput="autoCalc()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">腰围(cm)<span class="required">*</span></label><input class="form-input" id="f_waist" type="number" placeholder="如 98" oninput="autoCalc()"></div>
+              <div class="form-group"><label class="form-label">臀围(cm)</label><input class="form-input" id="f_hip" type="number" placeholder="如 104" oninput="autoCalc()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">收缩压(mmHg)</label><input class="form-input" id="f_sbp" type="number" placeholder="如 138" oninput="autoCalc()"></div>
+              <div class="form-group"><label class="form-label">舒张压(mmHg)</label><input class="form-input" id="f_dbp" type="number" placeholder="如 86" oninput="autoCalc()"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">静息心率(次/分)</label><input class="form-input" id="f_hr" type="number" placeholder="如 78" oninput="autoCalc()"></div>
+              <div class="form-group"><label class="form-label">体脂率(%)</label><input class="form-input" id="f_bodyfat" type="number" step="0.1" placeholder="如 32.1"></div>
+            </div>
+            <div class="form-group"><label class="form-label">内脏脂肪等级</label><input class="form-input" id="f_visceral" type="number" placeholder="如 10"></div>
+          </div>
+          <div class="calc-result" id="calcResults" style="display:none;">
+            <div style="font-weight:600;margin-bottom:8px;font-size:14px;">📐 自动计算结果</div>
+            <div class="calc-row"><span class="calc-label">BMI</span><span class="calc-value" id="calc_bmi">—</span></div>
+            <div class="calc-row"><span class="calc-label">血压分级</span><span class="calc-value" id="calc_bp">—</span></div>
+            <div class="calc-row"><span class="calc-label">腰围评估</span><span class="calc-value" id="calc_waist">—</span></div>
+            <div class="calc-row"><span class="calc-label">腰臀比</span><span class="calc-value" id="calc_whr">—</span></div>
+            <div class="calc-row"><span class="calc-label">心率评估</span><span class="calc-value" id="calc_hr">—</span></div>
+          </div>
+          <div class="form-nav"><button class="btn btn-secondary" onclick="goStep(1)">← 上一步</button><button class="btn btn-primary" onclick="goStep(3)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 3: Health Screening -->
+        <div class="step-content" id="step-3" style="display:none;">
+          <div class="card">
+            <div class="card-title">🏥 健康风险筛查</div>
+            <div class="form-group"><label class="form-label">已知疾病/异常</label>
+              <div class="checkbox-grid" id="conditions">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>无</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>高血压</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>血脂异常</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>血糖异常</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>脂肪肝</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>多囊卵巢</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>甲状腺问题</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>痛风</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>肾脏疾病</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>心血管疾病</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>关节问题</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">长期用药</label>
+              <div class="checkbox-grid" id="medications">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>无</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>降压药</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>降糖药</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>降脂药</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>激素类</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>精神类</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>中药</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>不详</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">过敏史</label>
+              <div class="checkbox-grid" id="allergies">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>无</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>药物过敏</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>食物过敏</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>胶布/金属</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>消毒剂</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label" style="color:var(--accent-red);">⚠️ 红旗项（安全筛查）</label>
+              <div class="checkbox-grid" id="redflags">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>无</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>胸痛胸闷</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>晕厥史</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>血压严重异常</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>急性感染发热</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>医生建议暂停</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">用药备注</label><input class="form-input" id="f_med_detail" placeholder="具体药名，如无则留空"></div>
+            <div class="form-group" id="femaleGroup" style="display:none;">
+              <label class="form-label">女性特殊情况</label>
+              <select class="form-select" id="f_female">
+                <option value="">请选择</option><option>经期规律</option><option>经期不规律</option>
+                <option>已绝经</option><option>备孕期</option><option>哺乳期</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-nav"><button class="btn btn-secondary" onclick="goStep(2)">← 上一步</button><button class="btn btn-primary" onclick="goStep(4)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 4: Diet & Lifestyle -->
+        <div class="step-content" id="step-4" style="display:none;">
+          <div class="card">
+            <div class="card-title">🍜 饮食与生活方式</div>
+            <div class="form-group"><label class="form-label">外食频率</label><select class="form-select" id="f_eating_out"><option value="">请选择</option><option>几乎不外食</option><option>每周1-2次</option><option>每周3-5次</option><option>几乎每天外食</option></select></div>
+            <div class="form-group"><label class="form-label">夜宵/零食/甜饮</label><select class="form-select" id="f_night_snack"><option value="">请选择</option><option>基本不吃</option><option>每周1-2次</option><option>每周3次以上</option><option>几乎每天</option></select></div>
+            <div class="form-group"><label class="form-label">主食油腻程度</label><select class="form-select" id="f_staple_oily"><option value="">请选择</option><option>主食适量、清淡</option><option>主食偏多</option><option>油腻偏多</option><option>两者都偏多</option></select></div>
+            <div class="form-group"><label class="form-label">运动频率</label><select class="form-select" id="f_exercise"><option value="">请选择</option><option>每天运动</option><option>每周3-5次</option><option>每周1-2次</option><option>很少运动</option></select></div>
+            <div class="form-group"><label class="form-label">睡眠状况</label><select class="form-select" id="f_sleep"><option value="">请选择</option><option>早睡早起</option><option>偶尔熬夜</option><option>经常熬夜</option><option>严重失眠</option></select></div>
+            <div class="form-group"><label class="form-label">排便情况</label><select class="form-select" id="f_bowel"><option value="">请选择</option><option>每天1-2次</option><option>1-2天一次</option><option>2-3天一次</option><option>3天以上一次</option></select></div>
+            <div class="form-group"><label class="form-label">压力/情绪性进食</label><select class="form-select" id="f_stress_eating"><option value="">请选择</option><option>不明显</option><option>偶尔</option><option>明显</option><option>非常明显</option></select></div>
+            <div class="form-group"><label class="form-label">饮水情况</label><select class="form-select" id="f_water"><option value="">请选择</option><option>充足（≥2000ml）</option><option>一般</option><option>偏少</option><option>很少喝水</option></select></div>
+          </div>
+          <div class="card">
+            <div class="card-title">💡 发胖原因</div>
+            <div class="checkbox-grid" id="gainReasons">
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>产后发胖</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>熬夜</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>压力大</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>饮酒</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>久坐</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>外卖/夜宵</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>停止运动</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>不明原因</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+            </div>
+          </div>
+          <div class="form-nav"><button class="btn btn-secondary" onclick="goStep(3)">← 上一步</button><button class="btn btn-primary" onclick="goStep(5)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 5: TCM Screening -->
+        <div class="step-content" id="step-5" style="display:none;">
+          <div class="card">
+            <div class="card-title">🌿 中医初筛</div>
+            <div class="form-group"><label class="form-label">自觉症状</label>
+              <div class="checkbox-grid" id="bodyFeelings">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>怕冷</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>疲劳</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>口苦粘腻</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>痰多苔厚</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>水肿</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>怕热</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>睡眠差</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>急躁易怒</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>便秘</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>便溏</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">体质倾向</label>
+              <div class="checkbox-grid" id="tcmTendency">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>痰湿质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>湿热质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>气虚质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>阳虚质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>肝郁质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>血瘀质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>混合质</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>待定</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">减重阻力</label>
+              <div class="checkbox-grid" id="mainObstacles">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>热量摄入</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>久坐不动</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>睡眠不足</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>压力情绪</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>反复反弹</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>腹型肥胖</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>代谢偏低</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>依从性差</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">舌象拍摄</label>
+              <div class="radio-group" id="tongue_photo">
+                <div class="radio-btn" onclick="selectRadio(this)"><span class="dot"></span> 已拍</div>
+                <div class="radio-btn selected" onclick="selectRadio(this)"><span class="dot"></span> 未拍</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚠️ 外治禁忌</div>
+            <div class="checkbox-grid" id="externalCautions">
+              <div class="checkbox-item checked" onclick="toggleCheck(this)"><span class="check-box"></span>无禁忌</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>血压禁忌</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>经期</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>孕期</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>皮肤感染</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>胶布过敏</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>手术区域</div>
+              <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+            </div>
+          </div>
+          <div class="form-nav"><button class="btn btn-secondary" onclick="goStep(4)">← 上一步</button><button class="btn btn-primary" onclick="goStep(6)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 6: Goals -->
+        <div class="step-content" id="step-6" style="display:none;">
+          <div class="card">
+            <div class="card-title">🎯 减重目标</div>
+            <div class="form-group"><label class="form-label">本次希望改善</label>
+              <div class="checkbox-grid" id="selectedGoals">
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>减重</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>减腰围</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>降体脂</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>提升精力</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>改善代谢</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>排便/水肿</div>
+                <div class="checkbox-item" onclick="toggleCheck(this)"><span class="check-box"></span>其他</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">目标体重(kg)</label><input class="form-input" id="f_target_weight" type="number" step="0.1" placeholder="如 78"></div>
+              <div class="form-group"><label class="form-label">目标腰围(cm)</label><input class="form-input" id="f_target_waist" type="number" placeholder="如 88"></div>
+            </div>
+            <div class="form-group"><label class="form-label">既往减重经历</label><select class="form-select" id="f_past_loss"><option value="">请选择</option><option>从未减过</option><option>成功过但反弹</option><option>尝试过没效果</option><option>正在减重中</option></select></div>
+            <div class="form-group"><label class="form-label">适合路径</label><div class="radio-group" id="f_path"><div class="radio-btn selected" onclick="selectRadio(this)"><span class="dot"></span> 全程版</div><div class="radio-btn" onclick="selectRadio(this)"><span class="dot"></span> 轻享版</div></div></div>
+            <div class="form-group"><label class="form-label">医生备注</label><textarea class="form-input" id="f_doctor_note" rows="3" placeholder="如：腰腹型肥胖，先控夜宵作息" style="resize:vertical;"></textarea></div>
+            <!-- 风险评分 -->
+            <div class="form-group"><label class="form-label">风险评分（1-5分）</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><label style="font-size:12px;color:var(--text-secondary);">代谢风险</label><input class="form-input" id="rs_metabolic" type="number" min="1" max="5" value="2" style="padding:8px 10px;"></div>
+                <div><label style="font-size:12px;color:var(--text-secondary);">心血管风险</label><input class="form-input" id="rs_cardio" type="number" min="1" max="5" value="2" style="padding:8px 10px;"></div>
+                <div><label style="font-size:12px;color:var(--text-secondary);">执行难度</label><input class="form-input" id="rs_execution" type="number" min="1" max="5" value="2" style="padding:8px 10px;"></div>
+                <div><label style="font-size:12px;color:var(--text-secondary);">反弹风险</label><input class="form-input" id="rs_rebound" type="number" min="1" max="5" value="2" style="padding:8px 10px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-nav"><button class="btn btn-secondary" onclick="goStep(5)">← 上一步</button><button class="btn btn-primary" onclick="goStep(7)">下一步 →</button></div>
+        </div>
+
+        <!-- Step 7: Confirm -->
+        <div class="step-content" id="step-7" style="display:none;">
+          <div class="card">
+            <div class="card-title">✅ 确认提交</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">请核对以下信息，确认无误后提交。系统将自动进行闸门判断并保存报告。</p>
+            <div id="confirmSummary"></div>
+          </div>
+          <div class="card" id="gateResult" style="display:none;">
+            <div class="card-title">🚦 闸门判断</div>
+            <div id="gateContent"></div>
+          </div>
+          <div class="form-nav">
+            <button class="btn btn-secondary" onclick="goStep(6)">← 上一步</button>
+            <button class="btn btn-orange" id="submitBtn" onclick="submitForm()">📤 提交并保存报告</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Template Modal -->
+<div class="modal-overlay" id="templateModal">
+  <div class="modal">
+    <div class="modal-title" id="templateModalTitle">新建模板</div>
+    <div class="form-group"><label class="form-label">版本号<span class="required">*</span></label><input class="form-input" id="tpl_version" placeholder="如 V18"></div>
+    <div class="form-group"><label class="form-label">模板名称<span class="required">*</span></label><input class="form-input" id="tpl_name" placeholder="如 V18 标准模板"></div>
+    <div class="form-group"><label class="form-label">描述</label><input class="form-input" id="tpl_description" placeholder="模板描述"></div>
+    <div class="form-group"><label class="form-label">模板内容(HTML)<span class="required">*</span></label><textarea class="form-input" id="tpl_content" rows="6" placeholder="<div class='report'>{{content}}</div>" style="resize:vertical;font-family:monospace;font-size:13px;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeTemplateModal()" style="flex:1;">取消</button>
+      <button class="btn btn-primary" onclick="saveTemplate()" style="flex:1;">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== API Helper =====
+const API = '';
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options
+  });
+  if (res.headers.get('content-type')?.includes('application/json')) {
+    return res.json();
+  }
+  return res;
+}
+
+// ===== Navigation =====
+const pageTitles = {
+  'dashboard': '仪表盘', 'report-list': '报告列表', 'generate': '生成报告',
+  'report-detail': '报告详情', 'template': '模板管理', 'gate-log': '闸门日志',
+  'settings': '系统设置', 'collection': '信息采集'
+};
+const pageLoaders = {
+  'dashboard': loadDashboard, 'report-list': loadReports, 'generate': loadGenerateList,
+  'report-detail': loadReportDetail, 'template': loadTemplates, 'gate-log': loadGateLogs
+};
+let currentRecordId = null;
+
+function navigateTo(page, recordId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  document.getElementById('mobileTitle').textContent = pageTitles[page] || '';
+  closeSidebar();
+  if (recordId) currentRecordId = recordId;
+  if (pageLoaders[page]) pageLoaders[page]();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== Status helpers =====
+const statusMap = { 'completed': { text: '已完成', cls: 'status-done' }, 'pending': { text: '待生成', cls: 'status-pending' }, 'blocked': { text: '已阻断', cls: 'status-blocked' } };
+function avatarColor(name) {
+  const colors = ['#146C86','#E8833A','#42A36A','#C94B4B','#9B59B6','#3498DB','#E67E22','#1ABC9C'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// ===== Dashboard =====
+async function loadDashboard() {
+  try {
+    const data = await api('/api/dashboard');
+    document.getElementById('dashboardStats').innerHTML = `
+      <div class="stat-card blue"><div class="stat-label">今日采集</div><div class="stat-value" style="color:var(--primary)">${data.today_count}</div><div class="stat-sub">来自数据库</div></div>
+      <div class="stat-card orange"><div class="stat-label">待生成报告</div><div class="stat-value" style="color:var(--accent-orange)">${data.pending}</div><div class="stat-sub">需尽快处理</div></div>
+      <div class="stat-card green"><div class="stat-label">已完成报告</div><div class="stat-value" style="color:var(--accent-green)">${data.completed}</div><div class="stat-sub">累计</div></div>
+      <div class="stat-card red"><div class="stat-label">闸门阻断</div><div class="stat-value" style="color:var(--accent-red)">${data.blocked}</div><div class="stat-sub">需医生复核</div></div>
+    `;
+
+    if (data.recent.length === 0) {
+      document.getElementById('dashboardRecent').innerHTML = '<div class="empty-state"><div class="icon">📭</div><div class="desc">暂无记录</div></div>';
+    } else {
+      document.getElementById('dashboardRecent').innerHTML = data.recent.map(r => {
+        const st = statusMap[r.status] || statusMap['pending'];
+        return `<div class="report-item" onclick="navigateTo('report-detail','${r.record_id}')">
+          <div class="report-avatar" style="background:${avatarColor(r.name)}">${r.name[0]}</div>
+          <div class="report-info"><div class="report-name">${r.name}</div><div class="report-meta">${r.record_id} · ${r.record_date} · ${r.suitable_path || '—'}</div></div>
+          <div class="report-status ${st.cls}">${st.text}</div>
+        </div>`;
+      }).join('');
+    }
+
+    if (data.trend.length === 0) {
+      document.getElementById('dashboardTrend').innerHTML = '<div class="empty-state"><div class="desc">暂无趋势数据</div></div>';
+    } else {
+      const maxCount = Math.max(...data.trend.map(t => t.count), 1);
+      const days = ['日','一','二','三','四','五','六'];
+      document.getElementById('dashboardTrend').innerHTML = `
+        <div class="trend-chart">${data.trend.map(t => {
+          const h = (t.count / maxCount * 100) || 5;
+          const d = new Date(t.date);
+          return `<div class="trend-bar" style="height:${h}%;background:var(--primary);opacity:${0.5 + t.count/maxCount*0.5};"></div>`;
+        }).join('')}</div>
+        <div class="trend-labels">${data.trend.map(t => { const d = new Date(t.date); return `<div style="flex:1">${days[d.getDay()]}</div>`; }).join('')}</div>
+      `;
+    }
+  } catch (e) { document.getElementById('dashboardStats').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">加载失败</div><div class="desc">${e.message}</div></div>`; }
+}
+
+// ===== Report List =====
+async function loadReports() {
+  const keyword = document.getElementById('searchKeyword')?.value || '';
+  const status = document.getElementById('statusFilter')?.value || '全部';
+  const container = document.getElementById('reportListContainer');
+  try {
+    const data = await api(`/api/reports?keyword=${encodeURIComponent(keyword)}&status=${encodeURIComponent(status)}`);
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div class="title">暂无报告</div><div class="desc">点击"信息采集"创建新报告</div></div>';
+      return;
+    }
+    container.innerHTML = data.map(r => {
+      const st = statusMap[r.status] || statusMap['pending'];
+      return `<div class="report-item" onclick="navigateTo('report-detail','${r.record_id}')">
+        <div class="report-avatar" style="background:${avatarColor(r.name)}">${r.name[0]}</div>
+        <div class="report-info"><div class="report-name">${r.name}</div><div class="report-meta">${r.record_id} · ${r.record_date} · ${r.suitable_path || '—'}</div></div>
+        <div class="report-status ${st.cls}">${st.text}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { container.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">加载失败</div><div class="desc">${e.message}</div></div>`; }
+}
+
+// ===== Generate List =====
+async function loadGenerateList() {
+  try {
+    const data = await api('/api/reports');
+    const pending = data.filter(r => r.status === 'pending');
+    const completed = data.filter(r => r.status === 'completed' || r.status === 'done');
+    const blocked = data.filter(r => r.status === 'blocked');
+
+    // 待生成报告列表
+    const pendList = document.getElementById('pendingList');
+    if (pending.length === 0) {
+      pendList.innerHTML = '<div class="empty-state"><div class="icon">✅</div><div class="title">暂无待生成报告</div></div>';
+    } else {
+      pendList.innerHTML = pending.map(r => `
+        <div class="report-item" style="cursor:default;">
+          <div class="report-avatar" style="background:${avatarColor(r.name)}">${r.name[0]}</div>
+          <div class="report-info">
+            <div class="report-name">${r.name}</div>
+            <div class="report-meta">${r.record_id} · ${r.record_date} · ${r.suitable_path || '—'}</div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="flex:none;" onclick="generateReport('${r.record_id}')">生成</button>
+        </div>
+      `).join('');
+    }
+
+    // 已生成报告列表
+    const compList = document.getElementById('completedList');
+    if (completed.length === 0) {
+      compList.innerHTML = '<div class="empty-state"><div class="icon">📄</div><div class="title">暂无已生成报告</div></div>';
+    } else {
+      compList.innerHTML = completed.map(r => `
+        <div class="report-item" style="cursor:default;">
+          <div class="report-avatar" style="background:${avatarColor(r.name)}">${r.name[0]}</div>
+          <div class="report-info">
+            <div class="report-name">${r.name}</div>
+            <div class="report-meta">${r.record_id} · ${r.record_date} · ${r.suitable_path || '—'}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex:none;">
+            <button class="btn btn-success btn-sm" onclick="downloadPDF('${r.record_id}')">PDF</button>
+            <button class="btn btn-secondary btn-sm" onclick="downloadMD('${r.record_id}')">MD</button>
+            <button class="btn btn-warning btn-sm" onclick="regenerateReport('${r.record_id}')">重新生成</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 阻断报告列表
+    const blkList = document.getElementById('blockedList');
+    if (blocked.length === 0) {
+      blkList.innerHTML = '<div style="color:var(--accent-green);font-size:13px;">✅ 当前无阻断报告</div>';
+    } else {
+      blkList.innerHTML = blocked.map(r => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <strong>${r.name}</strong>
+          <span style="font-size:12px;color:var(--text-secondary);">${r.record_id}</span>
+          <span class="tag tag-red" style="margin-left:auto;">${r.gate_reason || '红旗项'}</span>
+        </div>
+      `).join('');
+    }
+  } catch (e) { 
+    document.getElementById('pendingList').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="desc">${e.message}</div></div>`; 
+  }
+}
+
+async function generateReport(recordId) {
+  showToast('报告生成中，请稍候...');
+  try {
+    const res = await api(`/api/reports/${recordId}/generate`, { method: 'POST' });
+    if (res.success) {
+      showToast(res.message);
+      loadGenerateList();
+    } else {
+      showToast('生成失败: ' + (res.error || '未知错误'));
+    }
+  } catch (e) { showToast('生成失败: ' + e.message); }
+}
+
+async function regenerateReport(recordId) {
+  if (!confirm('确定要重新生成此报告吗？这将覆盖现有的报告内容。')) {
+    return;
+  }
+  showToast('报告重新生成中，请稍候...');
+  try {
+    const res = await api(`/api/reports/${recordId}/generate`, { method: 'POST' });
+    if (res.success) {
+      showToast(res.message || '报告已重新生成');
+      loadGenerateList();
+    } else {
+      showToast('重新生成失败: ' + (res.error || '未知错误'));
+    }
+  } catch (e) { showToast('重新生成失败: ' + e.message); }
+}
+
+// ===== Report Detail =====
+async function loadReportDetail() {
+  const container = document.getElementById('reportDetailContainer');
+  if (!currentRecordId) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📄</div><div class="title">请从报告列表选择</div><div class="desc">点击左侧"报告列表"查看报告</div></div>';
+    return;
+  }
+  try {
+    const r = await api(`/api/reports/${currentRecordId}`);
+    if (r.error) { container.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">${r.error}</div></div>`; return; }
+
+    const d = r.derived || {};
+    const isBlocked = r.status === 'blocked';
+    const path = r.suitable_path || '全程版';
+
+    function tags(items, css='tag-blue') {
+      if (!items || items.length === 0) return '<span class="tag tag-green">无</span>';
+      return items.map(t => `<span class="tag ${css}">${t}</span>`).join('');
+    }
+    function riskColor(s) { return s >= 4 ? 'var(--accent-red)' : s >= 3 ? 'var(--accent-orange)' : s >= 2 ? 'var(--accent-yellow)' : 'var(--accent-green)'; }
+
+    const riskScores = r.risk_scores || {};
+    let riskBars = '';
+    for (const [dim, score] of Object.entries(riskScores)) {
+      const pct = (score / 5 * 100) || 0;
+      riskBars += `<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;"><span>${dim}</span><span style="font-weight:600;color:${riskColor(score)}">${score}/5</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:${pct}%;background:${riskColor(score)};"></div></div>
+      </div>`;
+    }
+
+    const weightDiff = (r.weight_kg && r.target_weight_kg) ? `-${(parseFloat(r.weight_kg) - parseFloat(r.target_weight_kg)).toFixed(1)} kg` : '—';
+    const waistDiff = (r.waist_cm && r.target_waist_cm) ? `-${(parseFloat(r.waist_cm) - parseFloat(r.target_waist_cm)).toFixed(1)} cm` : '—';
+
+    container.innerHTML = `
+      <div class="report-cover">
+        <div class="cover-logo">荟城中医减重</div>
+        <div class="cover-sub">体重管理报告</div>
+        <div class="cover-title">${r.name} · 减重评估报告</div>
+        <div class="cover-info">报告编号：${r.record_id}<br>评估日期：${r.record_date}<br>服务包：${path}（${d.package_type || '完整包'}）<br>状态：${(statusMap[r.status]||{}).text || r.status}<br>${r.created_at ? '生成时间：' + r.created_at : ''}</div>
+      </div>
+
+      <div class="card">
+        <div class="report-section">
+          <div class="report-section-title">📋 一、基本信息</div>
+          <table class="report-table">
+            <tr><th>姓名</th><td>${r.name}</td><th>性别</th><td>${r.sex}</td></tr>
+            <tr><th>年龄</th><td>${r.age}岁</td><th>职业</th><td>${r.occupation_status || '—'}</td></tr>
+            <tr><th>身高</th><td>${r.height_cm || '—'} cm</td><th>体重</th><td>${r.weight_kg || '—'} kg</td></tr>
+            <tr><th>腰围</th><td>${r.waist_cm || '—'} cm</td><th>臀围</th><td>${r.hip_cm || '—'} cm</td></tr>
+            ${r.sex === '女' && r.female_status ? `<tr><th>女性情况</th><td colspan="3">${r.female_status}</td></tr>` : ''}
+          </table>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">📏 二、体格评估</div>
+          <div class="calc-result">
+            <div class="calc-row"><span class="calc-label">BMI</span><span class="calc-value ${d.bmi >= 28 ? 'danger' : d.bmi >= 24 ? 'warn' : 'good'}">${d.bmi || '—'} · ${d.bmi_level || '—'}</span></div>
+            <div class="calc-row"><span class="calc-label">血压</span><span class="calc-value ${d.bp_level && d.bp_level.includes('高血压') ? 'danger' : d.bp_level === '正常高值' ? 'warn' : 'good'}">${r.sbp || '—'}/${r.dbp || '—'} mmHg · ${d.bp_level || '—'}</span></div>
+            <div class="calc-row"><span class="calc-label">腰围</span><span class="calc-value ${d.waist_level && d.waist_level.includes('超标') ? 'danger' : d.waist_level === '临界' ? 'warn' : 'good'}">${r.waist_cm || '—'}cm · ${d.waist_level || '—'}</span></div>
+            <div class="calc-row"><span class="calc-label">腰臀比</span><span class="calc-value ${d.whr_level && d.whr_level.includes('肥胖') ? 'danger' : d.whr_level === '偏高' ? 'warn' : 'good'}">${d.whr || '—'} · ${d.whr_level || '—'}</span></div>
+            <div class="calc-row"><span class="calc-label">静息心率</span><span class="calc-value ${d.hr_level === '正常' ? 'good' : 'warn'}">${r.heart_rate || '—'} 次/分 · ${d.hr_level || '—'}</span></div>
+            <div class="calc-row"><span class="calc-label">体脂率</span><span class="calc-value">${r.body_fat_percent || '—'}%</span></div>
+            <div class="calc-row"><span class="calc-label">内脏脂肪等级</span><span class="calc-value">${r.visceral_fat_level || '—'}</span></div>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">⚠️ 三、健康风险筛查</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">已知疾病：</span>${tags(r.conditions, 'tag-orange')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">长期用药：</span>${tags(r.medications, 'tag-blue')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">过敏史：</span>${tags(r.allergies, 'tag-yellow')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">红旗项：</span>${tags(r.red_positive, 'tag-red')}</div>
+          ${r.med_detail ? `<div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">用药备注：</span>${r.med_detail}</div>` : ''}
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">🍜 四、饮食与生活方式</div>
+          <table class="report-table">
+            <tr><th>外食频率</th><td>${r.eating_out_frequency || '—'}</td></tr>
+            <tr><th>夜宵/甜饮</th><td>${r.night_snack_sweet_drink || '—'}</td></tr>
+            <tr><th>主食油腻</th><td>${r.staple_oily_food || '—'}</td></tr>
+            <tr><th>运动频率</th><td>${r.exercise_frequency || '—'}</td></tr>
+            <tr><th>睡眠</th><td>${r.sleep_status || '—'}</td></tr>
+            <tr><th>排便</th><td>${r.bowel_status || '—'}</td></tr>
+            <tr><th>压力进食</th><td>${r.stress_eating || '—'}</td></tr>
+            <tr><th>饮水</th><td>${r.water_intake || '—'}</td></tr>
+          </table>
+          <div style="margin-top:8px;"><span style="font-size:13px;color:var(--text-secondary);">发胖原因：</span>${tags(r.selected_gain_reasons, 'tag-orange')}</div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">🌿 五、中医体质辨证</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">体质倾向：</span>${tags(r.tcm_tendency, 'tag-orange')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">自觉症状：</span>${tags(r.body_feelings, 'tag-yellow')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">减重阻力：</span>${tags(r.main_obstacles, 'tag-blue')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">舌象：</span>${r.tongue_photo_taken || '—'}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">外治禁忌：</span>${tags(r.external_cautions, 'tag-red')}</div>
+          <div style="margin-bottom:8px;"><span style="font-size:13px;color:var(--text-secondary);">医生备注：</span>${r.report_focus_note || '—'}</div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">🎯 六、减重目标</div>
+          <table class="report-table">
+            <tr><th>目标体重</th><td>${r.weight_kg || '—'} → ${r.target_weight_kg || '—'} kg（${weightDiff}）</td></tr>
+            <tr><th>目标腰围</th><td>${r.waist_cm || '—'} → ${r.target_waist_cm || '—'} cm（${waistDiff}）</td></tr>
+            <tr><th>既往减重</th><td>${r.past_weight_loss || '—'}</td></tr>
+          </table>
+          <div style="margin-top:8px;"><span style="font-size:13px;color:var(--text-secondary);">希望改善：</span>${tags(r.selected_goals, 'tag-blue')}</div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">📊 七、风险评分</div>
+          ${riskBars || '<p>暂无评分数据</p>'}
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">🚦 八、闸门判断</div>
+          ${isBlocked
+            ? `<div style="background:rgba(201,75,75,0.08);border-left:4px solid var(--accent-red);padding:12px 16px;border-radius:4px;margin:12px 0;"><strong>⚠️ 闸门阻断</strong><br><span style="font-size:13px;color:var(--text-secondary);">${r.gate_reason || '闸门未通过'}</span><br><span style="font-size:13px;color:var(--text-secondary);">PDF报告将跳过生成，仅生成MD文件供医生审核。</span></div>`
+            : `<div style="background:rgba(66,163,106,0.08);border-left:4px solid var(--accent-green);padding:12px 16px;border-radius:4px;margin:12px 0;"><strong>✅ 闸门通过</strong><br><span style="font-size:13px;color:var(--text-secondary);">未发现红旗项，可以正常生成报告。</span></div>`
+          }
+          <p style="margin:8px 0;font-size:13px;">适合路径：${path}</p>
+          <p style="margin:8px 0;font-size:13px;">报告闸门：${r.report_permission || '—'}</p>
+        </div>
+      </div>
+
+      <!-- 闸门日志历史 -->
+      <div class="card">
+        <div class="card-title">🚦 闸门日志历史</div>
+        <div id="reportGateLogs">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="downloadPDF('${r.record_id}')" ${isBlocked ? 'disabled' : ''}>📥 下载PDF</button>
+        <button class="btn btn-orange" onclick="downloadMD('${r.record_id}')">📄 下载MD</button>
+      </div>
+    `;
+    // 异步加载该报告的闸门日志历史
+    loadReportGateLogs(r.record_id);
+  } catch (e) { container.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><div class="title">加载失败</div><div class="desc">${e.message}</div></div>`; }
+}
+
+async function loadReportGateLogs(recordId) {
+  const container = document.getElementById('reportGateLogs');
+  if (!container) return;
+  try {
+    const logs = await api(`/api/reports/${recordId}/gate-logs`);
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="desc">暂无闸门日志</div></div>';
+      return;
+    }
+    const statusText = { 'pass': '通过', 'block': '阻断', 'warn': '警告' };
+    container.innerHTML = logs.map(g => `
+      <div class="gate-item">
+        <div class="gate-dot ${g.gate_status}"></div>
+        <div class="gate-info">
+          <div class="gate-name">${statusText[g.gate_status] || g.gate_status}</div>
+          <div class="gate-detail">${g.created_at || ''} · ${g.gate_detail || ''}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state"><div class="desc">加载失败: ${e.message}</div></div>`;
+  }
+}
+
+function downloadPDF(recordId) {
+  showToast('PDF生成中...');
+  window.open(`/api/reports/${recordId}/pdf`, '_blank');
+}
+function downloadMD(recordId) {
+  showToast('MD文件生成中...');
+  window.open(`/api/reports/${recordId}/md`, '_blank');
+}
+
+// ===== Gate Logs =====
+async function loadGateLogs() {
+  try {
+    const data = await api('/api/gate-logs');
+    if (data.length === 0) {
+      document.getElementById('gateLogList').innerHTML = '<div class="empty-state"><div class="icon">🚦</div><div class="title">暂无日志</div></div>';
+      return;
+    }
+    document.getElementById('gateLogList').innerHTML = data.map(g => `
+      <div class="gate-item">
+        <div class="gate-dot ${g.gate_status}"></div>
+        <div class="gate-info">
+          <div class="gate-name">${g.name || '—'} · ${g.record_id}</div>
+          <div class="gate-detail">${g.created_at || ''} · ${g.gate_detail || ''}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { document.getElementById('gateLogList').innerHTML = `<div class="empty-state"><div class="desc">${e.message}</div></div>`; }
+}
+
+// ===== Templates =====
+async function loadTemplates() {
+  try {
+    const data = await api('/api/templates');
+    if (data.length === 0) {
+      document.getElementById('templateList').innerHTML = '<div class="empty-state"><div class="icon">📝</div><div class="title">暂无模板</div></div>';
+      return;
+    }
+    document.getElementById('templateList').innerHTML = data.map(t => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-weight:600;">${t.name} <span style="font-size:12px;color:var(--text-secondary);">(${t.version})</span></div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${t.description || ''} · 更新于 ${t.updated_at || t.created_at}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="tag ${t.status === 'active' ? 'tag-green' : 'tag-blue'}">${t.status === 'active' ? '使用中' : '归档'}</span>
+          ${t.status !== 'active' ? `<button class="btn btn-outline btn-sm" onclick="activateTemplate(${t.id})">激活</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="openTemplateModal(${t.id})">编辑</button>
+          ${t.status !== 'active' ? `<button class="btn btn-sm" style="background:var(--bg);color:var(--accent-red);border:1px solid var(--border);" onclick="deleteTemplate(${t.id})">删除</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { document.getElementById('templateList').innerHTML = `<div class="empty-state"><div class="desc">${e.message}</div></div>`; }
+}
+
+let editingTemplateId = null;
+async function openTemplateModal(tid) {
+  editingTemplateId = tid || null;
+  document.getElementById('templateModalTitle').textContent = tid ? '编辑模板' : '新建模板';
+  if (tid) {
+    try {
+      const t = await api(`/api/templates/${tid}`);
+      document.getElementById('tpl_version').value = t.version;
+      document.getElementById('tpl_name').value = t.name;
+      document.getElementById('tpl_description').value = t.description || '';
+      document.getElementById('tpl_content').value = t.content;
+    } catch (e) { showToast('加载失败'); }
+  } else {
+    document.getElementById('tpl_version').value = '';
+    document.getElementById('tpl_name').value = '';
+    document.getElementById('tpl_description').value = '';
+    document.getElementById('tpl_content').value = '';
+  }
+  document.getElementById('templateModal').classList.add('show');
+}
+function closeTemplateModal() { document.getElementById('templateModal').classList.remove('show'); }
+
+async function saveTemplate() {
+  const data = {
+    version: document.getElementById('tpl_version').value.trim(),
+    name: document.getElementById('tpl_name').value.trim(),
+    description: document.getElementById('tpl_description').value.trim(),
+    content: document.getElementById('tpl_content').value.trim(),
+  };
+  if (!data.version || !data.name || !data.content) { showToast('请填写必填字段'); return; }
+  try {
+    if (editingTemplateId) {
+      await api(`/api/templates/${editingTemplateId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('模板更新成功');
+    } else {
+      await api('/api/templates', { method: 'POST', body: JSON.stringify(data) });
+      showToast('模板创建成功');
+    }
+    closeTemplateModal();
+    loadTemplates();
+  } catch (e) { showToast('保存失败: ' + e.message); }
+}
+
+async function activateTemplate(tid) {
+  try {
+    await api(`/api/templates/${tid}/activate`, { method: 'POST' });
+    showToast('模板已激活');
+    loadTemplates();
+  } catch (e) { showToast('激活失败'); }
+}
+
+async function deleteTemplate(tid) {
+  if (!confirm('确定删除此模板？')) return;
+  try {
+    const res = await api(`/api/templates/${tid}`, { method: 'DELETE' });
+    if (res.success) { showToast('模板已删除'); loadTemplates(); }
+    else { showToast(res.error || '删除失败'); }
+  } catch (e) { showToast('删除失败'); }
+}
+
+// ===== Step Form =====
+let currentStep = 1;
+const stepNames = ['基本信息','体格测量','健康筛查','饮食与生活方式','中医初筛','减重目标','确认提交'];
+
+function goStep(step) {
+  document.getElementById('step-' + currentStep).style.display = 'none';
+  currentStep = step;
+  document.getElementById('step-' + currentStep).style.display = 'block';
+  document.querySelectorAll('.step-dot').forEach((dot, i) => {
+    const s = i + 1; dot.classList.remove('active','done');
+    if (s < currentStep) dot.classList.add('done');
+    else if (s === currentStep) dot.classList.add('active');
+  });
+  document.querySelectorAll('.step-line').forEach((line, i) => line.classList.toggle('done', i + 1 < currentStep));
+  document.getElementById('stepLabel').textContent = stepNames[currentStep - 1];
+  document.getElementById('stepSublabel').textContent = `Step ${currentStep}/7`;
+  if (currentStep === 7) buildSummary();
+  document.querySelector('.content').scrollTop = 0;
+}
+
+function selectRadio(el) {
+  el.parentElement.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+  const grid = el.parentElement;
+  const text = el.textContent.trim();
+  if (el.classList.contains('checked') && (text === '无' || text === '无禁忌')) {
+    grid.querySelectorAll('.checkbox-item').forEach(item => { if (item !== el) item.classList.remove('checked'); });
+  } else if (el.classList.contains('checked') && text !== '无' && text !== '无禁忌') {
+    grid.querySelectorAll('.checkbox-item').forEach(item => { if (item.textContent.trim() === '无' || item.textContent.trim() === '无禁忌') item.classList.remove('checked'); });
+  }
+}
+function getChecked(containerId) {
+  const items = document.querySelectorAll(`#${containerId} .checkbox-item.checked`);
+  return Array.from(items).map(el => el.textContent.trim());
+}
+function onSexChange() {
+  const sexEl = document.querySelector('#f_sex .radio-btn.selected');
+  const isFemale = sexEl ? sexEl.textContent.trim().includes('女') : false;
+  document.getElementById('femaleGroup').style.display = isFemale ? 'block' : 'none';
+  autoCalc();
+}
+
+// ===== Auto Calc =====
+function autoCalc() {
+  const h = parseFloat(document.getElementById('f_height').value);
+  const w = parseFloat(document.getElementById('f_weight').value);
+  const waist = parseFloat(document.getElementById('f_waist').value);
+  const hip = parseFloat(document.getElementById('f_hip').value);
+  const sbp = parseFloat(document.getElementById('f_sbp').value);
+  const dbp = parseFloat(document.getElementById('f_dbp').value);
+  const hr = parseFloat(document.getElementById('f_hr').value);
+  const panel = document.getElementById('calcResults');
+  panel.style.display = (h || w || waist || hip || sbp || dbp || hr) ? 'block' : 'none';
+
+  if (h && w) {
+    const bmi = (w / ((h/100) ** 2)).toFixed(1);
+    let lvl = ''; if (bmi < 18.5) lvl='体重过轻'; else if (bmi<24) lvl='正常'; else if (bmi<28) lvl='超重'; else if (bmi<32) lvl='肥胖Ⅰ级'; else if (bmi<36) lvl='肥胖Ⅱ级'; else lvl='肥胖Ⅲ级';
+    const e = document.getElementById('calc_bmi'); e.textContent = `${bmi} · ${lvl}`;
+    e.className = 'calc-value ' + (bmi < 18.5 || bmi >= 28 ? 'danger' : bmi >= 24 ? 'warn' : 'good');
+  } else { document.getElementById('calc_bmi').textContent = '—'; document.getElementById('calc_bmi').className = 'calc-value'; }
+
+  if (sbp || dbp) {
+    let lvl = '正常';
+    if ((sbp>=180)||(dbp>=110)) lvl='高血压3级'; else if ((sbp>=160)||(dbp>=100)) lvl='高血压2级'; else if ((sbp>=140)||(dbp>=90)) lvl='高血压1级'; else if ((sbp>=130)||(dbp>=80)) lvl='正常高值'; else if ((sbp>=120)&&(dbp<80)) lvl='正常高值';
+    const e = document.getElementById('calc_bp'); e.textContent = `${sbp||'—'}/${dbp||'—'} mmHg · ${lvl}`;
+    e.className = 'calc-value ' + (lvl.includes('高血压') ? 'danger' : lvl === '正常高值' ? 'warn' : 'good');
+  } else { document.getElementById('calc_bp').textContent = '—'; }
+
+  if (waist) {
+    const sexEl = document.querySelector('#f_sex .radio-btn.selected');
+    const isMale = sexEl ? sexEl.textContent.trim().includes('男') : true;
+    let lvl = '正常';
+    if (isMale) { if (waist>=90) lvl='超标（≥90cm）'; else if (waist>=85) lvl='临界'; }
+    else { if (waist>=85) lvl='超标（≥85cm）'; else if (waist>=80) lvl='临界'; }
+    const e = document.getElementById('calc_waist'); e.textContent = `${waist}cm · ${lvl}`;
+    e.className = 'calc-value ' + (lvl.includes('超标') ? 'danger' : lvl === '临界' ? 'warn' : 'good');
+  } else { document.getElementById('calc_waist').textContent = '—'; }
+
+  if (waist && hip) {
+    const whr = (waist / hip).toFixed(2);
+    const sexEl2 = document.querySelector('#f_sex .radio-btn.selected');
+    const isMale2 = sexEl2 ? sexEl2.textContent.trim().includes('男') : true;
+    let lvl = '正常';
+    if (isMale2) { if (whr>=1.0) lvl='中心性肥胖'; else if (whr>=0.9) lvl='偏高'; }
+    else { if (whr>=0.9) lvl='中心性肥胖'; else if (whr>=0.85) lvl='偏高'; }
+    const e = document.getElementById('calc_whr'); e.textContent = `${whr} · ${lvl}`;
+    e.className = 'calc-value ' + (lvl.includes('肥胖') ? 'danger' : lvl === '偏高' ? 'warn' : 'good');
+  } else { document.getElementById('calc_whr').textContent = '—'; }
+
+  if (hr) {
+    let lvl = '正常'; if (hr<60) lvl='心率偏慢'; else if (hr>100) lvl='心率偏快';
+    const e = document.getElementById('calc_hr'); e.textContent = `${hr} 次/分 · ${lvl}`;
+    e.className = 'calc-value ' + (lvl === '正常' ? 'good' : 'warn');
+  } else { document.getElementById('calc_hr').textContent = '—'; }
+}
+
+// ===== Build Summary =====
+function buildSummary() {
+  const name = document.getElementById('f_name').value || '未填写';
+  const sexEl = document.querySelector('#f_sex .radio-btn.selected');
+  const sex = sexEl ? sexEl.textContent.trim() : '未选择';
+  const age = document.getElementById('f_age').value || '—';
+  const height = document.getElementById('f_height').value || '—';
+  const weight = document.getElementById('f_weight').value || '—';
+  const waist = document.getElementById('f_waist').value || '—';
+  const hip = document.getElementById('f_hip').value || '—';
+  const sbp = document.getElementById('f_sbp').value || '—';
+  const dbp = document.getElementById('f_dbp').value || '—';
+  const pathEl = document.querySelector('#f_path .radio-btn.selected');
+  const path = pathEl ? pathEl.textContent.trim() : '全程版';
+  const targetW = document.getElementById('f_target_weight').value;
+  const targetWaist = document.getElementById('f_target_waist').value;
+
+  let bmiText = '—';
+  if (height && weight) bmiText = (parseFloat(weight) / ((parseFloat(height)/100) ** 2)).toFixed(1);
+
+  let weightDiff = '';
+  if (weight && targetW) weightDiff = `（-${(parseFloat(weight) - parseFloat(targetW)).toFixed(1)} kg）`;
+
+  const redFlags = getChecked('redflags').filter(t => t !== '无');
+  const gatePanel = document.getElementById('gateResult');
+  const gateContent = document.getElementById('gateContent');
+
+  if (redFlags.length > 0) {
+    gatePanel.style.display = 'block';
+    gatePanel.style.borderLeft = '4px solid var(--accent-red)';
+    gateContent.innerHTML = `<div style="color:var(--accent-red);font-weight:600;margin-bottom:8px;">⚠️ 闸门将阻断</div>
+      <p style="font-size:13px;color:var(--text-secondary);">存在红旗项：${redFlags.join('、')}</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">提交后报告状态为"已阻断"，PDF将跳过生成，仅生成MD文件。</p>`;
+  } else {
+    gatePanel.style.display = 'block';
+    gatePanel.style.borderLeft = '4px solid var(--accent-green)';
+    gateContent.innerHTML = `<div style="color:var(--accent-green);font-weight:600;margin-bottom:8px;">✅ 闸门将通过</div>
+      <p style="font-size:13px;color:var(--text-secondary);">未发现红旗项，提交后报告状态为"待生成"。</p>`;
+  }
+
+  document.getElementById('confirmSummary').innerHTML = `
+    <table class="report-table">
+      <tr><th>姓名</th><td>${name}</td><th>性别</th><td>${sex}</td></tr>
+      <tr><th>年龄</th><td>${age}岁</td><th>身高</th><td>${height} cm</td></tr>
+      <tr><th>体重</th><td>${weight} kg</td><th>BMI</th><td>${bmiText}</td></tr>
+      <tr><th>腰围</th><td>${waist} cm</td><th>臀围</th><td>${hip} cm</td></tr>
+      <tr><th>血压</th><td colspan="3">${sbp}/${dbp} mmHg</td></tr>
+    </table>
+    <div style="margin-top:12px;"><span style="font-size:13px;color:var(--text-secondary);">服务包：</span><span class="tag tag-blue">${path}</span></div>
+    ${targetW ? `<div style="margin-top:8px;"><span style="font-size:13px;color:var(--text-secondary);">目标体重：</span><strong>${weight} → ${targetW} kg ${weightDiff}</strong></div>` : ''}
+    ${targetWaist ? `<div style="margin-top:4px;"><span style="font-size:13px;color:var(--text-secondary);">目标腰围：</span><strong>${waist} → ${targetWaist} cm</strong></div>` : ''}
+  `;
+}
+
+// ===== Submit Form =====
+async function submitForm() {
+  const name = document.getElementById('f_name').value.trim();
+  const sexEl = document.querySelector('#f_sex .radio-btn.selected');
+  const sex = sexEl ? sexEl.textContent.trim() : '';
+  const age = parseInt(document.getElementById('f_age').value);
+  const height = parseFloat(document.getElementById('f_height').value);
+  const weight = parseFloat(document.getElementById('f_weight').value);
+
+  if (!name || !sex || !age || !height || !weight) { showToast('请填写必填字段'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '提交中...';
+
+  const data = {
+    name, sex, age,
+    occupation_status: document.getElementById('f_occupation').value || null,
+    height_cm: height, weight_kg: weight,
+    waist_cm: parseFloat(document.getElementById('f_waist').value) || null,
+    hip_cm: parseFloat(document.getElementById('f_hip').value) || null,
+    sbp: parseInt(document.getElementById('f_sbp').value) || null,
+    dbp: parseInt(document.getElementById('f_dbp').value) || null,
+    heart_rate: parseInt(document.getElementById('f_hr').value) || null,
+    body_fat_percent: parseFloat(document.getElementById('f_bodyfat').value) || null,
+    visceral_fat_level: document.getElementById('f_visceral').value || null,
+    target_weight_kg: parseFloat(document.getElementById('f_target_weight').value) || null,
+    target_waist_cm: parseFloat(document.getElementById('f_target_waist').value) || null,
+    past_weight_loss: document.getElementById('f_past_loss').value || null,
+    eating_out_frequency: document.getElementById('f_eating_out').value || null,
+    night_snack_sweet_drink: document.getElementById('f_night_snack').value || null,
+    staple_oily_food: document.getElementById('f_staple_oily').value || null,
+    exercise_frequency: document.getElementById('f_exercise').value || null,
+    sleep_status: document.getElementById('f_sleep').value || null,
+    bowel_status: document.getElementById('f_bowel').value || null,
+    stress_eating: document.getElementById('f_stress_eating').value || null,
+    water_intake: document.getElementById('f_water').value || null,
+    suitable_path: document.querySelector('#f_path .radio-btn.selected')?.textContent.trim() || '全程版',
+    report_focus_note: document.getElementById('f_doctor_note').value || null,
+    female_status: sex === '女' ? document.getElementById('f_female').value : null,
+    tongue_photo_taken: document.querySelector('#tongue_photo .radio-btn.selected')?.textContent.trim() || '未拍',
+    med_detail: document.getElementById('f_med_detail').value || null,
+    selected_goals: getChecked('selectedGoals'),
+    selected_gain_reasons: getChecked('gainReasons'),
+    conditions: getChecked('conditions'),
+    medications: getChecked('medications'),
+    allergies: getChecked('allergies'),
+    red_positive: getChecked('redflags').filter(t => t !== '无'),
+    body_feelings: getChecked('bodyFeelings'),
+    tcm_tendency: getChecked('tcmTendency'),
+    main_obstacles: getChecked('mainObstacles'),
+    external_cautions: getChecked('externalCautions'),
+    risk_scores: {
+      '代谢风险': parseInt(document.getElementById('rs_metabolic').value) || 2,
+      '心血管风险': parseInt(document.getElementById('rs_cardio').value) || 2,
+      '执行难度': parseInt(document.getElementById('rs_execution').value) || 2,
+      '反弹风险': parseInt(document.getElementById('rs_rebound').value) || 2,
+    }
+  };
+
+  try {
+    const res = await api('/api/reports', { method: 'POST', body: JSON.stringify(data) });
+    if (res.success) {
+      showToast(res.message);
+      setTimeout(() => { navigateTo('report-detail', res.record_id); }, 1500);
+    } else {
+      showToast('提交失败: ' + (res.error || '未知错误'));
+      btn.disabled = false; btn.textContent = '📤 提交并保存报告';
+    }
+  } catch (e) {
+    showToast('提交失败: ' + e.message);
+    btn.disabled = false; btn.textContent = '📤 提交并保存报告';
+  }
+}
+
+// ===== Init =====
+loadDashboard();
+</script>
+</body>
+</html>
