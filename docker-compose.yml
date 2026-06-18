@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # MySQL 数据库服务
   mysql:
-    image: mysql:8.0
+    image: docker.1panel.live/library/mysql:8.0
     container_name: huicheng-wsp-mysql
     restart: always
     environment:
