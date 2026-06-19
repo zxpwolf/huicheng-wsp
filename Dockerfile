@@ -1,5 +1,6 @@
 # 生产环境 Dockerfile - 荟城减重 WSP 报告生成系统
-FROM python:3.14-slim
+# 使用阿里云镜像加速
+FROM registry.cn-hangzhou.aliyuncs.com/library/python:3.14-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -21,6 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
+
+# 配置pip使用国内镜像
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制依赖文件并安装Python包
 COPY requirements.txt .
